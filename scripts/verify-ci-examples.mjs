@@ -4,11 +4,20 @@ import { fileURLToPath } from "node:url";
 import YAML from "yaml";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const actionRefs = {
+  checkout: "actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5",
+  setupNode: "actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+  setupPnpm: "pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320",
+  uploadArtifact: "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+  downloadArtifact: "actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093",
+  uploadSarif: "github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9"
+};
 const workspacePackage = JSON.parse(await fs.readFile(path.join(repoRoot, "package.json"), "utf8"));
 const releaseGate = String(workspacePackage.scripts?.verify ?? "");
 for (const requiredCommand of [
   "pnpm verify:schemas",
   "pnpm verify:versions",
+  "pnpm verify:docs",
   "pnpm verify:rules",
   "pnpm build",
   "pnpm verify:packages",
@@ -38,18 +47,23 @@ for (const example of examples) {
   const workflow = YAML.parse(raw);
   assert(workflow?.permissions?.contents === "read", `${example.file} must use read-only contents permission`);
   assert(
-    workflow?.permissions?.["security-events"] === "write",
-    `${example.file} must grant security-events: write for SARIF upload`
+    workflow?.permissions?.["security-events"] === undefined,
+    `${example.file} must not grant security-events authority workflow-wide`
   );
   assert(workflow?.on?.pull_request !== undefined, `${example.file} must run on pull_request`);
   assert(workflow?.on?.push?.branches?.includes("main"), `${example.file} must run on main pushes`);
 
   const jobs = Object.values(workflow?.jobs ?? {});
-  assert(jobs.length === 1, `${example.file} must define exactly one job`);
-  const steps = jobs[0]?.steps ?? [];
+  assert(jobs.length === 2, `${example.file} must separate scanning from SARIF publication`);
+  const scanJob = workflow?.jobs?.agentcsp;
+  assert(
+    scanJob?.permissions?.contents === "read" && scanJob?.permissions?.["security-events"] === undefined,
+    `${example.file} scan job must remain read-only`
+  );
+  const steps = scanJob?.steps ?? [];
   assert(Array.isArray(steps), `${example.file} job steps must be an array`);
-  assert(steps.some((step) => step.uses === "actions/checkout@v4"), `${example.file} must checkout source`);
-  assert(steps.some((step) => step.uses === "actions/setup-node@v4"), `${example.file} must setup Node.js`);
+  assert(steps.some((step) => step.uses === actionRefs.checkout), `${example.file} must checkout source immutably`);
+  assert(steps.some((step) => step.uses === actionRefs.setupNode), `${example.file} must setup Node.js immutably`);
 
   const scanStep = steps.find((step) => step.name === "Run AgentCSP");
   assert(scanStep, `${example.file} must run AgentCSP`);
@@ -60,12 +74,31 @@ for (const example of examples) {
   assert(scanCommand.includes("--format json,md,sarif"), `${example.file} must emit SARIF with JSON and Markdown`);
   assert(scanCommand.includes("--quiet"), `${example.file} must keep CI logs concise`);
 
-  const uploadStep = steps.find((step) => step.uses === "github/codeql-action/upload-sarif@v4");
-  assert(uploadStep, `${example.file} must upload SARIF to GitHub code scanning`);
-  assert(uploadStep.if?.includes("always()"), `${example.file} SARIF upload must run even when gated scans fail`);
-  assert(uploadStep.if?.includes("github.event.pull_request.head.repo.full_name == github.repository"), `${example.file} SARIF upload must be fork-safe`);
-  assert(uploadStep.with?.sarif_file === ".agentcsp/agentcsp.sarif", `${example.file} must upload AgentCSP SARIF`);
-  assert(uploadStep.with?.category === "agentcsp", `${example.file} must set the AgentCSP SARIF category`);
+  const stageStep = steps.find((step) => step.uses === actionRefs.uploadArtifact);
+  assert(stageStep, `${example.file} must stage SARIF as a read-only job artifact`);
+  assert(stageStep.if?.includes("always()"), `${example.file} must stage SARIF even when gated scans fail`);
+  assert(stageStep.with?.name === "agentcsp-sarif", `${example.file} must use the stable SARIF artifact name`);
+  assert(stageStep.with?.path === ".agentcsp/agentcsp.sarif", `${example.file} must stage AgentCSP SARIF`);
+
+  const publishJob = workflow?.jobs?.["publish-sarif"];
+  assert(publishJob?.needs === "agentcsp", `${example.file} SARIF publication must depend on the scan`);
+  assert(publishJob?.if?.includes("always()"), `${example.file} SARIF publication must survive a gated scan failure`);
+  assert(
+    publishJob?.if?.includes("github.event.pull_request.head.repo.full_name == github.repository"),
+    `${example.file} SARIF publication must be fork-safe`
+  );
+  assert(
+    publishJob?.permissions?.contents === "read" && publishJob?.permissions?.["security-events"] === "write",
+    `${example.file} must isolate security-events authority in the publication job`
+  );
+  const publishSteps = publishJob?.steps ?? [];
+  assert(
+    publishSteps.some((step) => step.uses === actionRefs.downloadArtifact && step.with?.name === "agentcsp-sarif"),
+    `${example.file} must download the staged SARIF artifact`
+  );
+  const uploadStep = publishSteps.find((step) => step.uses === actionRefs.uploadSarif);
+  assert(uploadStep?.with?.sarif_file === "sarif/agentcsp.sarif", `${example.file} must upload AgentCSP SARIF`);
+  assert(uploadStep?.with?.category === "agentcsp", `${example.file} must set the AgentCSP SARIF category`);
 
   if (example.gated) {
     assert(scanStep["continue-on-error"] === true, `${example.file} must continue so SARIF can upload before failing`);
@@ -88,23 +121,23 @@ for (const example of examples) {
 
 const internalCiPath = path.join(repoRoot, ".github/workflows/ci.yml");
 const internalCi = YAML.parse(await fs.readFile(internalCiPath, "utf8"));
-assert(internalCi?.permissions?.actions === "read", ".github/workflows/ci.yml must use read-only actions permission");
 assert(internalCi?.permissions?.contents === "read", ".github/workflows/ci.yml must use read-only contents permission");
 assert(
-  internalCi?.permissions?.["security-events"] === "write",
-  ".github/workflows/ci.yml must grant security-events: write for SARIF upload"
+  internalCi?.jobs?.verify?.permissions?.contents === "read" &&
+    internalCi?.jobs?.verify?.permissions?.["security-events"] === undefined,
+  ".github/workflows/ci.yml verify job must remain read-only"
 );
-const internalSteps = Object.values(internalCi?.jobs ?? {})[0]?.steps ?? [];
+const internalSteps = internalCi?.jobs?.verify?.steps ?? [];
 assert(Array.isArray(internalSteps), ".github/workflows/ci.yml job steps must be an array");
 assert(
-  internalSteps.some((step) => step.uses === "actions/checkout@v4"),
-  ".github/workflows/ci.yml must checkout source with a pinned major version"
+  internalSteps.some((step) => step.uses === actionRefs.checkout && step.with?.["persist-credentials"] === false),
+  ".github/workflows/ci.yml must use immutable checkout without persisted credentials"
 );
-const internalPnpmStep = internalSteps.find((step) => step.uses === "pnpm/action-setup@v4");
-assert(internalPnpmStep, ".github/workflows/ci.yml must setup pnpm with a pinned major version");
+const internalPnpmStep = internalSteps.find((step) => step.uses === actionRefs.setupPnpm);
+assert(internalPnpmStep, ".github/workflows/ci.yml must setup pnpm with an immutable action reference");
 assert(internalPnpmStep.with?.version === "11.0.9", ".github/workflows/ci.yml must pin pnpm to 11.0.9");
-const internalNodeStep = internalSteps.find((step) => step.uses === "actions/setup-node@v4");
-assert(internalNodeStep, ".github/workflows/ci.yml must setup Node.js with a pinned major version");
+const internalNodeStep = internalSteps.find((step) => step.uses === actionRefs.setupNode);
+assert(internalNodeStep, ".github/workflows/ci.yml must setup Node.js with an immutable action reference");
 assert(internalNodeStep.with?.["node-version"] === 24, ".github/workflows/ci.yml must run on Node.js 24");
 assert(internalNodeStep.with?.cache === "pnpm", ".github/workflows/ci.yml must cache pnpm dependencies");
 const internalInstallStep = internalSteps.find((step) => step.name === "Install dependencies");
@@ -117,18 +150,80 @@ assert(
   internalVerifyStep?.run === "pnpm verify",
   ".github/workflows/ci.yml must run the canonical release verification gate"
 );
-const internalUploadStep = internalSteps.find((step) => step.uses === "github/codeql-action/upload-sarif@v4");
+const internalStageStep = internalSteps.find((step) => step.uses === actionRefs.uploadArtifact);
 assert(
-  internalUploadStep?.if === "github.event_name == 'push'",
-  ".github/workflows/ci.yml must upload internal SARIF only for push events"
+  internalStageStep?.if === "github.event_name == 'push'" && internalStageStep?.with?.name === "agentcsp-sarif",
+  ".github/workflows/ci.yml must stage internal SARIF only for push events"
 );
 assert(
-  internalUploadStep?.with?.sarif_file === "examples/vulnerable-agent/.agentcsp/agentcsp.sarif",
-  ".github/workflows/ci.yml must upload the SARIF generated by verify:fixtures"
+  internalStageStep?.with?.path === "examples/vulnerable-agent/.agentcsp/agentcsp.sarif",
+  ".github/workflows/ci.yml must stage the SARIF generated by verify:fixtures"
 );
+const sarifJob = internalCi?.jobs?.["publish-sarif"];
+assert(sarifJob?.needs === "verify", ".github/workflows/ci.yml SARIF publication must depend on verification");
+assert(sarifJob?.if === "github.event_name == 'push'", ".github/workflows/ci.yml SARIF publication must be push-only");
+assert(sarifJob?.permissions?.contents === "read", ".github/workflows/ci.yml SARIF publication needs read-only contents");
+assert(
+  sarifJob?.permissions?.["security-events"] === "write",
+  ".github/workflows/ci.yml must isolate security-events: write in the SARIF publication job"
+);
+const sarifSteps = sarifJob?.steps ?? [];
+assert(
+  sarifSteps.some((step) => step.uses === actionRefs.downloadArtifact && step.with?.name === "agentcsp-sarif"),
+  ".github/workflows/ci.yml SARIF publication must download the verified artifact"
+);
+assert(
+  sarifSteps.some(
+    (step) =>
+      step.uses === actionRefs.uploadSarif &&
+      step.with?.sarif_file === "sarif/agentcsp.sarif" &&
+      step.with?.category === "agentcsp"
+  ),
+  ".github/workflows/ci.yml must upload the verified AgentCSP SARIF"
+);
+
+const releasePath = path.join(repoRoot, ".github/workflows/release.yml");
+const release = YAML.parse(await fs.readFile(releasePath, "utf8"));
+assert(release?.jobs?.build?.permissions?.contents === "read", "release build job must be read-only");
+assert(release?.jobs?.publish?.needs === "build", "release publication must consume the verified build job");
+assert(release?.jobs?.publish?.permissions?.contents === "write", "release publication must declare contents write");
+assert(release?.jobs?.publish?.permissions?.["id-token"] === "write", "release publication must declare OIDC authority");
+assert(release?.jobs?.publish?.permissions?.attestations === "write", "release publication must declare attestation authority");
+assert(
+  !(release?.jobs?.publish?.steps ?? []).some((step) => String(step.uses ?? "").startsWith("pnpm/action-setup@")),
+  "privileged release publication must not run package-manager setup actions"
+);
+const releasePackageStep = (release?.jobs?.build?.steps ?? []).find((step) => step.name === "Build package tarballs");
+assert(
+  String(releasePackageStep?.run ?? "").includes("pnpm sbom --out release/agentcsp.cdx.json"),
+  "release build must generate the deterministic CycloneDX SBOM"
+);
+assert(
+  String(releasePackageStep?.run ?? "").includes("sha256sum release/*.tgz release/*.json > release/SHA256SUMS"),
+  "release build must checksum package, version, and SBOM artifacts"
+);
+
+for (const workflowPath of [
+  ...examples.map((example) => path.join(repoRoot, example.file)),
+  internalCiPath,
+  releasePath
+]) {
+  const workflow = YAML.parse(await fs.readFile(workflowPath, "utf8"));
+  assertImmutableActionReferences(workflow, path.relative(repoRoot, workflowPath));
+}
 
 console.log(`CI examples verified: ${examples.length} workflows plus internal CI`);
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
+}
+
+function assertImmutableActionReferences(workflow, label) {
+  for (const job of Object.values(workflow?.jobs ?? {})) {
+    for (const step of job?.steps ?? []) {
+      const reference = String(step.uses ?? "");
+      if (!reference || reference.startsWith("./") || reference.startsWith("docker://")) continue;
+      assert(/^[^/\s]+\/.+@[a-f0-9]{40}$/u.test(reference), `${label} has mutable action reference ${reference}`);
+    }
+  }
 }

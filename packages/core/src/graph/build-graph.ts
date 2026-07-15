@@ -23,9 +23,18 @@ export interface StaticGraph {
   attackPathsTruncated: boolean;
 }
 
+export interface StaticRelationshipGraph {
+  relationships: GraphEdge[];
+}
+
 export const attackPathLimit = 15;
 
 export function buildStaticGraph(surfaces: DetectedSurfaces, findings: Finding[]): StaticGraph {
+  const graph = buildStaticRelationships(surfaces);
+  return buildStaticAttackPaths(surfaces, graph.relationships, findings);
+}
+
+export function buildStaticRelationships(surfaces: DetectedSurfaces): StaticRelationshipGraph {
   const objects = allManifestObjects(surfaces);
   const allHighRiskCapabilities = sortCapabilities(objects.filter(isHighRiskCapability));
   const highRiskCapabilities = mergeCapabilities(
@@ -128,9 +137,17 @@ export function buildStaticGraph(surfaces: DetectedSurfaces, findings: Finding[]
   }
 
   const relationshipList = [...relationships.values()].sort((a, b) => a.id.localeCompare(b.id));
-  const attackPathSummary = buildAttackPaths(relationshipList, findings, objects);
+  return { relationships: relationshipList };
+}
+
+export function buildStaticAttackPaths(
+  surfaces: DetectedSurfaces,
+  relationships: GraphEdge[],
+  findings: Finding[]
+): StaticGraph {
+  const attackPathSummary = buildAttackPaths(relationships, findings, allManifestObjects(surfaces));
   return {
-    relationships: relationshipList,
+    relationships: [...relationships].sort((a, b) => a.id.localeCompare(b.id)),
     attackPaths: attackPathSummary.attackPaths,
     attackPathLimit,
     attackPathsTotal: attackPathSummary.totalAttackPaths,

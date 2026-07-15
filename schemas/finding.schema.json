@@ -35,164 +35,45 @@
             "very_high"
           ]
         },
-        "confidence_rationale": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "default": []
+        "origin": {
+          "type": "string",
+          "enum": [
+            "built_in",
+            "project",
+            "integrity"
+          ]
         },
-        "matched_object": {
-          "type": "object",
-          "properties": {
-            "id": {
-              "type": "string"
-            },
-            "type": {
-              "type": "string",
-              "enum": [
-                "agent",
-                "instruction",
-                "skill",
-                "plugin",
-                "mcp_server",
-                "tool",
-                "prompt",
-                "rag_source",
-                "memory",
-                "secret",
-                "runtime_config",
-                "ci_cd",
-                "automation"
-              ]
-            },
-            "name": {
-              "type": "string"
-            },
-            "path": {
-              "type": "string"
-            },
-            "trust_level": {
-              "type": "string",
-              "enum": [
-                "trusted",
-                "project",
-                "workspace",
-                "third_party",
-                "untrusted",
-                "unknown"
-              ],
-              "default": "unknown"
-            },
-            "data_classes": {
-              "type": "array",
-              "items": {
-                "type": "string",
-                "enum": [
-                  "public",
-                  "internal",
-                  "confidential",
-                  "secret",
-                  "credential",
-                  "pii",
-                  "unknown"
-                ]
-              },
-              "default": []
-            },
-            "actions": {
-              "type": "array",
-              "items": {
-                "type": "string",
-                "enum": [
-                  "read",
-                  "write",
-                  "execute",
-                  "publish",
-                  "send",
-                  "delete",
-                  "approve",
-                  "remember",
-                  "call"
-                ]
-              },
-              "default": []
-            },
-            "side_effect": {
-              "type": "boolean",
-              "default": false
-            },
-            "reversible": {
-              "type": "boolean",
-              "default": true
-            },
-            "external_reach": {
-              "type": "boolean",
-              "default": false
-            },
-            "secret_exposure": {
-              "type": "boolean",
-              "default": false
-            },
-            "untrusted_to_privileged": {
-              "type": "boolean",
-              "default": false
-            },
-            "evidence": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "string"
-                  },
-                  "object_id": {
-                    "type": "string"
-                  },
-                  "file_path": {
-                    "type": "string"
-                  },
-                  "line": {
-                    "type": "integer",
-                    "exclusiveMinimum": 0
-                  },
-                  "snippet": {
-                    "type": "string",
-                    "const": "[redacted by default]",
-                    "default": "[redacted by default]"
-                  },
-                  "redacted": {
-                    "type": "boolean",
-                    "const": true,
-                    "default": true
-                  },
-                  "reason": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "id",
-                  "object_id",
-                  "file_path",
-                  "reason"
-                ],
-                "additionalProperties": false
-              },
-              "default": []
-            },
-            "metadata": {
-              "type": "object",
-              "additionalProperties": {},
-              "default": {}
-            }
-          },
-          "required": [
-            "id",
-            "type",
-            "name",
-            "path"
-          ],
-          "additionalProperties": false
+        "maturity": {
+          "type": "string",
+          "enum": [
+            "calibrated",
+            "stable",
+            "experimental"
+          ]
+        },
+        "disposition": {
+          "type": "string",
+          "enum": [
+            "blocking",
+            "advisory",
+            "integrity"
+          ]
+        },
+        "suppressibility": {
+          "type": "string",
+          "enum": [
+            "never",
+            "trusted_policy_only",
+            "policy"
+          ]
+        },
+        "support_tier": {
+          "type": "string",
+          "enum": [
+            "typed_path",
+            "structured",
+            "heuristic"
+          ]
         },
         "file_path": {
           "type": "string"
@@ -206,7 +87,16 @@
         "data_classes": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/AgentCSP Finding/properties/matched_object/properties/data_classes/items"
+            "type": "string",
+            "enum": [
+              "public",
+              "internal",
+              "confidential",
+              "secret",
+              "credential",
+              "pii",
+              "unknown"
+            ]
           }
         },
         "recommended_control": {
@@ -219,110 +109,6 @@
             "quarantine",
             "warn"
           ]
-        },
-        "risk": {
-          "type": "object",
-          "properties": {
-            "trust_level": {
-              "$ref": "#/definitions/AgentCSP Finding/properties/matched_object/properties/trust_level"
-            },
-            "data_classes": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/AgentCSP Finding/properties/matched_object/properties/data_classes/items"
-              },
-              "default": []
-            },
-            "actions": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/AgentCSP Finding/properties/matched_object/properties/actions/items"
-              },
-              "default": []
-            },
-            "side_effect": {
-              "type": "boolean",
-              "default": false
-            },
-            "reversible": {
-              "type": "boolean",
-              "default": true
-            },
-            "external_reach": {
-              "type": "boolean",
-              "default": false
-            },
-            "secret_exposure": {
-              "type": "boolean",
-              "default": false
-            },
-            "untrusted_to_privileged": {
-              "type": "boolean",
-              "default": false
-            },
-            "score": {
-              "type": "integer",
-              "minimum": 0,
-              "maximum": 100,
-              "default": 0
-            },
-            "rationale": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              },
-              "default": []
-            }
-          },
-          "required": [
-            "trust_level"
-          ],
-          "additionalProperties": false
-        },
-        "risk_summary": {
-          "type": "object",
-          "properties": {
-            "primary_driver": {
-              "type": "string",
-              "enum": [
-                "untrusted_to_privileged",
-                "secret_exposure",
-                "external_reach",
-                "irreversible_action",
-                "side_effect",
-                "sensitive_data",
-                "credential_data",
-                "pii_data",
-                "execute_action",
-                "write_action"
-              ]
-            },
-            "drivers": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/AgentCSP Finding/properties/risk_summary/properties/primary_driver"
-              },
-              "default": []
-            },
-            "impact": {
-              "type": "string"
-            },
-            "control_objective": {
-              "type": "string"
-            },
-            "analyst_summary": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              },
-              "default": []
-            }
-          },
-          "required": [
-            "impact",
-            "control_objective"
-          ],
-          "additionalProperties": false
         },
         "maps_to": {
           "type": "object",
@@ -482,10 +268,124 @@
             "existing"
           ]
         },
-        "evidence": {
+        "matched_object_ref": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "agent",
+                "instruction",
+                "skill",
+                "plugin",
+                "mcp_server",
+                "tool",
+                "prompt",
+                "rag_source",
+                "memory",
+                "secret",
+                "runtime_config",
+                "ci_cd",
+                "automation"
+              ]
+            },
+            "name": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            },
+            "trust_level": {
+              "type": "string",
+              "enum": [
+                "trusted",
+                "project",
+                "workspace",
+                "third_party",
+                "untrusted",
+                "unknown"
+              ]
+            }
+          },
+          "required": [
+            "id",
+            "type",
+            "name",
+            "path",
+            "trust_level"
+          ],
+          "additionalProperties": false
+        },
+        "risk": {
+          "type": "object",
+          "properties": {
+            "trust_level": {
+              "$ref": "#/definitions/AgentCSP Finding/properties/matched_object_ref/properties/trust_level"
+            },
+            "data_classes": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/AgentCSP Finding/properties/data_classes/items"
+              },
+              "default": []
+            },
+            "actions": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "read",
+                  "write",
+                  "execute",
+                  "publish",
+                  "send",
+                  "delete",
+                  "approve",
+                  "remember",
+                  "call"
+                ]
+              },
+              "default": []
+            },
+            "side_effect": {
+              "type": "boolean",
+              "default": false
+            },
+            "reversible": {
+              "type": "boolean",
+              "default": true
+            },
+            "external_reach": {
+              "type": "boolean",
+              "default": false
+            },
+            "secret_exposure": {
+              "type": "boolean",
+              "default": false
+            },
+            "untrusted_to_privileged": {
+              "type": "boolean",
+              "default": false
+            },
+            "score": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100,
+              "default": 0
+            }
+          },
+          "required": [
+            "trust_level"
+          ],
+          "additionalProperties": false
+        },
+        "evidence_refs": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/AgentCSP Finding/properties/matched_object/properties/evidence/items"
+            "type": "string"
           },
           "default": []
         }
@@ -497,14 +397,13 @@
         "category",
         "severity",
         "confidence",
-        "matched_object",
         "file_path",
         "reason",
         "trust_boundary_crossed",
         "data_classes",
         "recommended_control",
-        "risk",
-        "risk_summary"
+        "matched_object_ref",
+        "risk"
       ],
       "additionalProperties": false
     }

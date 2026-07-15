@@ -1,0 +1,30 @@
+{
+  "schema_version": "0.1.0",
+  "id": "agentcsp-recommended",
+  "name": "AgentCSP Recommended",
+  "version": "0.2.0",
+  "minimum_scanner_version": "0.2.0",
+  "description": "Bounded high-signal rules for common AI agent authority, approval, secret, and external-boundary failures.",
+  "enforcement_status": "advisory_only",
+  "calibrated_rule_ids": [],
+  "quality_evidence": "docs/detection-quality.md",
+  "rule_ids": [
+    "AGENTCSP-AUTOMATION-002",
+    "AGENTCSP-AUTOMATION-003",
+    "AGENTCSP-CICD-001",
+    "AGENTCSP-MCP-002",
+    "AGENTCSP-MCP-003",
+    "AGENTCSP-MCP-006",
+    "AGENTCSP-MCP-009",
+    "AGENTCSP-RUNTIME-001",
+    "AGENTCSP-RUNTIME-002",
+    "AGENTCSP-RUNTIME-003",
+    "AGENTCSP-RUNTIME-004",
+    "AGENTCSP-RUNTIME-005",
+    "AGENTCSP-RUNTIME-006",
+    "AGENTCSP-RUNTIME-016",
+    "AGENTCSP-RUNTIME-120",
+    "AGENTCSP-TOOL-004",
+    "AGENTCSP-TOOL-006"
+  ]
+}

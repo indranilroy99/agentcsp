@@ -11,10 +11,14 @@ export class IgnoreMatcher {
     this.patterns = patterns.map((pattern) => pattern.trim()).filter(Boolean);
   }
 
-  static load(rootPath: string, extraPatterns: string[] = []): IgnoreMatcher {
+  static load(
+    rootPath: string,
+    extraPatterns: string[] = [],
+    options: { includeProjectIgnore?: boolean } = {}
+  ): IgnoreMatcher {
     const ignorePath = path.join(rootPath, ".agentcspignore");
     const patterns = [...DEFAULT_EXCLUDED_DIRS, ...extraPatterns];
-    if (fs.existsSync(ignorePath)) {
+    if (options.includeProjectIgnore !== false && fs.existsSync(ignorePath)) {
       const lines = fs
         .readFileSync(ignorePath, "utf8")
         .split(/\r?\n/)

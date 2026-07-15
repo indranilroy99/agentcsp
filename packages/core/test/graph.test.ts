@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import path from "node:path";
 import { scanProject } from "../src/scanner/scan.js";
+import { tempPath } from "./temp-path.js";
 
 describe("static graph", () => {
   it("generates bounded, high-signal attack paths", async () => {
     const result = await scanProject({
       root_path: path.resolve("examples/vulnerable-agent"),
-      output_path: "/private/tmp/agentcsp-graph-test-output",
+      output_path: tempPath("agentcsp-graph-test-output"),
       formats: ["json", "md", "sarif"],
       include_hidden: true,
       include_logs: false,
@@ -220,7 +221,7 @@ describe("static graph", () => {
   it("correlates generated-state replay with privileged capability paths when logs are included", async () => {
     const result = await scanProject({
       root_path: path.resolve("examples/vulnerable-agent"),
-      output_path: "/private/tmp/agentcsp-graph-log-test-output",
+      output_path: tempPath("agentcsp-graph-log-test-output"),
       formats: ["json", "md", "sarif"],
       include_hidden: true,
       include_logs: true,
@@ -247,7 +248,7 @@ describe("static graph", () => {
   it("does not create graph paths from negated safety policy text", async () => {
     const result = await scanProject({
       root_path: path.resolve("examples/safe-agent"),
-      output_path: "/private/tmp/agentcsp-graph-safe-test-output",
+      output_path: tempPath("agentcsp-graph-safe-test-output"),
       formats: ["json", "md", "sarif"],
       include_hidden: true,
       include_logs: false,

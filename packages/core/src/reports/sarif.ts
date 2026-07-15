@@ -1,4 +1,5 @@
 import type { AgentManifest, Finding, Severity } from "../schemas/index.js";
+import { markdownPlainText } from "../utils/markdown.js";
 
 type SarifLevel = "none" | "note" | "warning" | "error";
 
@@ -143,14 +144,14 @@ export function renderSarifReport(manifest: AgentManifest): Record<string, unkno
 
 function sarifRuleHelpMarkdown(finding: Finding): string {
   const mappings = [
-    ...finding.maps_to.owasp.map((item) => `- OWASP: ${item}`),
-    ...finding.maps_to.mitre_atlas.map((item) => `- MITRE ATLAS: ${item}`),
-    ...finding.maps_to.nist_ai_rmf.map((item) => `- NIST AI RMF: ${item}`)
+    ...finding.maps_to.owasp.map((item) => `- OWASP: ${markdownPlainText(item)}`),
+    ...finding.maps_to.mitre_atlas.map((item) => `- MITRE ATLAS: ${markdownPlainText(item)}`),
+    ...finding.maps_to.nist_ai_rmf.map((item) => `- NIST AI RMF: ${markdownPlainText(item)}`)
   ];
   return [
-    `### ${finding.name}`,
+    `### ${markdownPlainText(finding.name)}`,
     "",
-    finding.reason,
+    markdownPlainText(finding.reason),
     "",
     `Recommended control: ${finding.recommended_control.replaceAll("_", " ")}`,
     "",

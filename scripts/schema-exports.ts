@@ -1,14 +1,14 @@
 import { zodToJsonSchema } from "zod-to-json-schema";
 import {
-  AgentManifestSchema,
-  FindingSchema,
+  AgentManifestArtifactSchema,
+  FindingArtifactSchema,
   PolicySchema,
   RuleSchema
 } from "../packages/core/src/schemas/index.js";
 
 export const schemaExports = [
-  ["manifest.schema.json", AgentManifestSchema, "AgentCSP Agent Manifest"],
-  ["finding.schema.json", FindingSchema, "AgentCSP Finding"],
+  ["manifest.schema.json", AgentManifestArtifactSchema, "AgentCSP Agent Manifest"],
+  ["finding.schema.json", FindingArtifactSchema, "AgentCSP Finding"],
   ["rule.schema.json", RuleSchema, "AgentCSP Rule"],
   ["policy.schema.json", PolicySchema, "AgentCSP Policy"]
 ] as const;

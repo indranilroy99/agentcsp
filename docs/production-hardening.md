@@ -2,6 +2,1050 @@
 
 AgentCSP should become useful to cybersecurity teams by producing high-confidence findings with evidence, not by maximizing alert volume.
 
+## Autoplan Phase 1: CEO Review
+
+Review date: 2026-07-15
+
+Review mode: `SELECTIVE_EXPANSION`
+
+Current launch verdict: **v0.2 public-preview release candidate, advisory use only**. The implementation now has a trusted strict profile, bounded and deterministic scanning, ownership-aware artifact transactions, classified failures, lifecycle commands, release provenance controls, package verification, and a 159-test regression suite. It is suitable for production evaluation as an advisory repository scanner. It is not yet approved as an enforcement-grade blocking control because independent real-repository detection calibration and completed cross-platform release evidence remain open.
+
+### v0.2 Evidence Update
+
+Evidence recorded on 2026-07-15:
+
+- `pnpm verify:release` passes end to end, including schema, version, rule, package, fixture, redaction, dependency, and performance gates.
+- The installed-package smoke test verifies both workspace packages and all 383 packaged rules through a clean package-manager tarball installation, with Windows-safe command execution.
+- The recommended ruleset contains 17 bounded advisory rules; the 383-rule research catalog remains opt-in as `extended`.
+- A 150-case synthetic parser-conformance benchmark passes with no mismatches. It is explicitly non-enforcement-eligible and is not presented as production precision evidence.
+- The five-run scale gate indexes 5,000 files and 104,860,000 bytes at 1,766 ms p95 and 177,717,248 bytes peak RSS on the documented reference host.
+- Two independent code-review rounds found and closed output-lock ownership, unresolved runtime-profile, baseline-error-classification, trusted-input time-of-check/time-of-use, shared scanner-version, and semantic minimum-version defects with regression tests.
+- Protected-profile tests prove that explicit policy and baseline inputs are rejected unless they carry a matching SHA-256 digest, resolve outside the scan root, and are regular files.
+- CycloneDX 1.6 SBOM generation is deterministic and the release workflow produces checksums and GitHub attestations from immutable action pins.
+
+Remaining enforcement-grade blockers are deliberately narrow: an independently labeled real-repository corpus for any enforcement-eligible rule, successful registry provenance, and external security-user evaluation. The advisory public preview additionally requires a successful Linux/macOS/Windows package-install matrix on the pushed commit. Until enforcement evidence exists, all findings and policies remain recommendations rather than claims of runtime blocking.
+
+### Launch Review Closure
+
+The Autoplan CEO, engineering, and developer-experience review record is complete. A post-fix independent CEO and security-product re-review found no P0 or P1 blocker for pushing the advisory, source-built public-preview candidate. It verified that package smoke execution uses `pnpm.cmd` and the Node runtime on Windows, and that trusted policy and baseline inputs reject non-regular files before they are read. The review also independently reran the focused trust/CLI tests, full 159-test suite, lint, and scale envelope.
+
+This is an AI-assisted engineering review, not a substitute for an external professional security assessment. The pushed commit must still pass the hosted Verify, Linux/Node 20, Windows/Node 22, and macOS/Node 24 jobs before the preview is announced. npm publication, GitHub release tagging, and enforcement-grade claims remain out of scope until their documented prerequisites are satisfied.
+
+### Locked Premises
+
+| Premise | Decision | Reason |
+| --- | --- | --- |
+| AgentCSP focuses on AI security | Accepted | This is the differentiated problem and avoids diluting the release with general software supply-chain scanning. |
+| The CLI ships before a dashboard | Accepted | The manifest, evidence, rule, and policy contracts must stabilize before a platform depends on them. |
+| AppSec and platform-security engineers are the first users | Accepted | They own repository controls, CI adoption, triage, and exception governance. |
+| High-confidence evidence matters more than finding count | Accepted | Security teams will not keep a gate enabled if severity and confidence are not empirically credible. |
+| Core scanning is local-first and requires no hosted service | Accepted | This is a trust, adoption, and vendor-neutrality requirement. |
+| Runtime enforcement and a hosted control plane are outside this release | Accepted | Static repository posture must be proven before runtime adapters or organization-wide state are introduced. |
+| The current implementation is production-ready after documentation polish | Rejected | Trusted-policy bypass, uncalibrated scoring, single-surface dispatch, and release-distribution gaps are launch blockers. |
+
+### Strategic Reframe
+
+The first production product is **an evidence-led AI agent repository posture scanner**, not yet a centralized enforcement control plane. Its wedge is proving how untrusted context can reach agent authority across MCP, tools, prompts, RAG, memory, CI, and runtime configuration. The CLI may emit policy recommendations and static attack paths, but it must not claim runtime blocking or organization-wide deployment inventory.
+
+The product becomes defensible when typed provenance and authority paths drive a small, calibrated blocking rule pack. Adding more flat heuristic rules before that evidence exists would increase maintenance and alert volume without improving trust.
+
+### What Already Exists
+
+| Sub-problem | Existing implementation | Reuse decision |
+| --- | --- | --- |
+| Conservative traversal | `packages/core/src/scanner/walk.ts` applies deterministic ordering, size and file limits, hidden-folder handling, default ignores, and coverage health | Reuse and harden read-time containment and diagnostics. |
+| Secret-safe evidence | `read-safe.ts`, evidence schemas, report and SARIF redaction checks | Reuse as a non-negotiable invariant. |
+| Normalized agent inventory | Zod schemas and detector output cover instructions, skills, MCP, tools, prompts, RAG, memory, runtime, CI, and automations | Reuse; split detector ownership without changing output semantics unnecessarily. |
+| Deterministic identifiers | `stableId`, rule-pack fingerprints, manifest fingerprints, sorted outputs | Reuse and add golden compatibility tests. |
+| Static relationships and attack paths | Graph builder, relationship schema, attack-path reports, and static blast-radius summary | Move graph construction before qualifying high-confidence path rules. |
+| Open rule packs | Constrained YAML rules, schema validation, packaged built-in assets | Reuse; introduce maturity and calibration metadata, then separate blocking and advisory packs. |
+| Advisory policy | Trust overrides, recommended controls, expiring suppressions, policy diagnostics | Reuse after establishing a trusted enforcement-policy boundary and unsuppressible meta-findings. |
+| CI interfaces | JSON, Markdown, SARIF, baseline comparison, confidence and health gates | Reuse; add a safe strict profile, distinct exit codes, and trusted-policy examples. |
+| Package verification | Tarball checks, installed-tree smoke test, version checks, fixture output checks, npm audit | Reuse inside a cross-platform release pipeline with provenance and SBOM output. |
+| Synthetic regression fixtures | Vulnerable and safe agent repositories plus 114 tests | Keep for regression; do not treat them as precision or recall evidence. |
+
+### Dream State
+
+```mermaid
+flowchart LR
+  A["Current: broad heuristic repository scanner"] --> B["This plan: calibrated, trusted, releaseable CLI"]
+  B --> C["12-month ideal: organization AI authority control plane"]
+  A --> A1["383 mostly critical rules"]
+  A --> A2["Synthetic fixture proof"]
+  A --> A3["Advisory local policy"]
+  B --> B1["Typed path evidence"]
+  B --> B2["Measured blocking pack"]
+  B --> B3["Trusted CI policy and provenance"]
+  C --> C1["Runtime adapters"]
+  C --> C2["Fleet inventory and history"]
+  C --> C3["Signed evidence and control enforcement"]
+```
+
+### Implementation Alternatives
+
+| Approach | Scope | Effort | Risk | Advantages | Disadvantages | Decision |
+| --- | --- | --- | --- | --- | --- | --- |
+| A. Polish and publish | README, icon, package release, existing tests | Low | Critical | Fastest public launch | Preserves policy bypass, uncalibrated severity, silent false negatives, and unsupported claims | Rejected |
+| B. Evidence-led production CLI | Trusted policy, multi-surface adapters, calibrated core pack, benchmark corpus, strict CI profile, release provenance, lifecycle commands | High | Controlled | Produces a credible security product and preserves the CLI-first strategy | Requires reducing claims and classifying many rules as advisory until measured | **Selected** |
+| C. Build platform and runtime enforcement now | Dashboard, service, adapters, organization database, runtime policy | Very high | Critical | Broader long-term platform story | Multiplies unstable contracts before static detection is proven | Deferred |
+
+### Scope Decisions
+
+Accepted into this release plan:
+
+- Establish a trusted-policy input and make scanner-integrity findings unsuppressible.
+- Replace mutually exclusive file dispatch with composable parser adapters.
+- Build a small graph-native, empirically calibrated blocking pack; retain the broader pack as advisory until measured.
+- Separate impact, exploitability, and detector certainty in scoring and reporting.
+- Add a labeled benchmark corpus with precision, recall, duplicate-rate, crash-rate, and performance gates.
+- Add a strict CI profile, stable exit-code contract, atomic private outputs, and read-time path containment.
+- Add CLI lifecycle commands for validation, rule discovery/explanation, diagnostics, and deterministic baseline management.
+- Add a supported-platform matrix, trusted npm publishing with provenance, SBOMs, checksums, release notes, and rollback documentation.
+- Rewrite product positioning and README around the shipped CLI, with a distinct professional terminal and repository identity.
+
+Deferred or rejected:
+
+- Dashboard and hosted platform: contracts and adoption evidence must stabilize first.
+- Runtime policy enforcement: requires independent adapters and a threat model beyond static scanning.
+- General-purpose software supply-chain security: outside the AI-security product focus; scanner self-provenance remains in scope.
+- Organization-wide deployment inventory: requires durable deployment identity and a service-side data model.
+- Ticketing, Slack, email, and SIEM integrations: stable JSON and SARIF are the release interface; native integrations follow demonstrated demand.
+- Signed or tamper-evident evidence: schema readiness is sufficient for this release.
+- Deep secret-value scanning: default behavior remains key-name and reference detection only.
+- Full interprocedural analysis for every language: supported AST tiers ship incrementally; unsupported analysis stays advisory and explicit.
+
+### CEO NOT in Scope
+
+The deferred and rejected items above are explicitly not part of the v0.2 release gate. They remain roadmap candidates only after the scanner's trust, evidence, calibration, and distribution contracts are proven.
+
+### Temporal Interrogation
+
+| Time | Expected result | Failure signal |
+| --- | --- | --- |
+| Hour 1 | A new user installs the package, runs `agentcsp scan .`, understands the receipt, and sees portable artifacts without local-path leakage | Install fails, output claims enforcement, or the first report is dominated by unexplained criticals |
+| Hour 2 | The user can validate config, inspect a rule, understand evidence, and distinguish advisory from blocking findings | The only workflow is opening large JSON files or reading rule YAML manually |
+| Hour 4 | The user adopts an advisory CI workflow with complete scan-health and SARIF output | A malformed policy or parser silently converts a scan into a clean result |
+| Hour 6 | The user enables a trusted strict profile for only the calibrated blocking pack | Repository-controlled policy can suppress the gate, or exit behavior is ambiguous |
+| Week 2 | Security teams can baseline existing risk, review narrow expiring suppressions, and measure new-risk gates | Broad suppressions hide policy-integrity findings or baselines cannot be reproduced |
+| Month 3 | Real repository corpus metrics and user triage show stable precision and useful remediation | Rule count grows while benchmark quality, adoption, and time-to-triage do not improve |
+
+Mode confirmed: `SELECTIVE_EXPANSION`. Production-critical CLI capabilities are accepted; platform and runtime work are deferred.
+
+### Outside Voices
+
+#### CODEX SAYS (CEO - strategy challenge)
+
+The independent Codex review found 13 launch-impact concerns: five critical, seven high, and one medium. The critical findings were a repository-controlled policy bypass, a graph that does not drive rule evaluation, a hardening document without measurable release gates, structurally inflated severity/confidence, and first-match file classification that silently misses combined configurations. The review also flagged regex-only source analysis, insufficient validation, over-broad market claims, fail-open operational defaults, missing lifecycle commands, incomplete release provenance, weak manifest identity governance, and unnecessary artifact metadata.
+
+Launch recommendation: private alpha in advisory mode until these gaps are closed.
+
+#### CLAUDE SUBAGENT (CEO - strategic independence)
+
+Unavailable in this environment. This phase is tagged `[codex-only]`; a missing voice is not counted as consensus.
+
+| Dimension | Claude | Codex | Consensus |
+| --- | --- | --- | --- |
+| Premises valid? | N/A | Mostly valid after narrowing the product claim | Flagged, no two-model confirmation |
+| Right problem to solve? | N/A | Yes, if path evidence replaces flat breadth as the wedge | Flagged, no two-model confirmation |
+| Scope calibration correct? | N/A | No; calibration and release engineering must precede more detections | Flagged, no two-model confirmation |
+| Alternatives sufficiently explored? | N/A | No; publish-now and platform-now must be explicitly rejected | Flagged, no two-model confirmation |
+| Competitive and market risks covered? | N/A | No; credibility will be lost without empirical signal quality | Flagged, no two-model confirmation |
+| Six-month trajectory sound? | N/A | No; current trajectory creates a larger heuristic monolith | Flagged, no two-model confirmation |
+
+### Section 1: Architecture Review
+
+Findings:
+
+1. Rule evaluation currently precedes graph construction, so relationship-dependent claims are not proven by the rule engine.
+2. A 40,000-line detector combines dispatch, parsing, classification, framework adaptation, and data-flow approximation in one ownership boundary.
+3. First-match dispatch exits after one recognized shape and can miss additional surfaces in combined framework configuration.
+4. Regex source analysis and structured configuration parsing are not separated into explicit support and confidence tiers.
+
+Decision: introduce composable adapters that return zero or more normalized objects plus diagnostics; build the graph before path rules; keep the constrained object-rule DSL for posture rules and add a constrained graph-rule schema for proven source-to-sink paths. Do not permit custom JavaScript rule execution.
+
+### Section 2: Error and Rescue Map
+
+| Method or boundary | Failure class | Current rescue | Required rescue | User impact |
+| --- | --- | --- | --- | --- |
+| Root traversal | unreadable root, permission, path race | Root error aborts; subtree errors become diagnostics | Preserve abort for invalid root; add stable error code and read-time containment | Clear scanner failure, no partial clean claim |
+| Directory traversal | unreadable subtree, max-files limit | Diagnostic or incomplete health | Strict profile must fail; advisory profile must surface bounded diagnostic | Explicit partial coverage |
+| File stat/read | replaced file, symlink race, permission, invalid bytes | Stat is rescued; read can throw; symlinks skipped by directory entry type | Open without following links where supported, verify containment, rescue reads into diagnostics | No crash and no out-of-root read |
+| Structured parser | malformed JSON/YAML/TOML | Mostly diagnostic and continue | Record adapter, section, stable code, and health degradation | Actionable parser failure |
+| Project policy load | missing or invalid explicit config | Diagnostic and empty policy | Advisory mode may continue; strict mode fails configuration; trusted policy is separate | No silent policy loss |
+| Rule-pack load | malformed or duplicate project rule | Diagnostic and continue | Built-in calibrated pack failure is internal error; project pack failure is explicit degraded scan | No false clean gate |
+| Suppression application | broad or self-protecting suppression | Applied before gating | Scanner-integrity findings are unsuppressible; broad high/critical suppression fails strict profile | Gate cannot self-disable |
+| Graph construction | malformed relation or unresolvable reference | Reporting fallback | Path-rule evaluation must fail closed for affected rule and emit diagnostic | No unsupported path claim |
+| Baseline load | missing, malformed, incompatible schema | Diagnostic behavior varies | Stable baseline error codes; strict profile fails; compatibility message names supported versions | Reproducible comparison |
+| Output write | partial write, permissions, interruption | Direct write with process defaults | Atomic temporary write and rename; restrictive permissions; cleanup on failure | No partial artifact set |
+| CLI option parsing | invalid combination or value | Generic error, exit 1 | Stable error code, short fix, relevant help, distinct exit status | Scriptable failure handling |
+| Release publish | wrong version, missing asset, compromised workflow | No workflow | Trusted publishing, provenance, package verification, SBOM, checksums, rollback procedure | Verifiable installation |
+
+### Section 3: Security and Threat Model
+
+The scanner must defend against a malicious repository, a compromised pull request, malformed parser inputs, path replacement races, hostile custom rules, policy weakening, artifact exfiltration, and a compromised release workflow. The local repository is untrusted input. A policy used to decide whether that repository passes cannot come exclusively from that same trust domain.
+
+Required controls:
+
+- Dedicated `--trusted-policy` input with a recorded SHA-256 digest and portable source label.
+- Unsuppressible scanner-integrity and policy-integrity findings.
+- Strict rejection of broad high/critical suppressions in trusted CI mode.
+- No secret values, raw snippets, absolute roots, external URLs, policy reasons, or owner identities in shareable artifacts by default.
+- Safe file opens with read-time containment and no symlink following where supported.
+- Atomic outputs with restrictive permissions.
+- Pinned GitHub Actions, least-privilege permissions, trusted npm publishing, provenance, and generated SBOMs.
+
+### Section 4: Data Flow and Interaction Edge Cases
+
+Primary data flow:
+
+```mermaid
+flowchart LR
+  R["Untrusted repository"] --> W["Safe walker"]
+  T["Trusted policy"] --> P["Policy validator"]
+  W --> A["Composable adapters"]
+  A --> M["Normalized manifest objects"]
+  M --> G["Typed authority graph"]
+  M --> O["Object posture rules"]
+  G --> X["Path rules"]
+  O --> F["Findings"]
+  X --> F
+  P --> C["Control and gate evaluation"]
+  F --> C
+  C --> E["Portable JSON, Markdown, SARIF"]
+```
+
+Shadow paths that require explicit handling: repository policy affecting its own gate; baseline from an incompatible scanner/rule pack; output directory being rescanned; a combined config matching multiple adapters; a parser recognizing only part of a document; generated logs containing secret-shaped values; rule-pack changes reclassifying baseline findings; and external trusted-policy paths leaking into artifacts.
+
+### Section 5: Code Quality Review
+
+The current schemas, report modules, tests, and package verifiers show useful ownership boundaries. The detector does not. Extraction must be incremental and behavior-preserving: first adapter interfaces and dispatch, then structured configuration families, then source-language adapters, each guarded by golden manifest and finding tests. A big-bang rewrite is rejected.
+
+All public schema and CLI changes require a changelog entry, compatibility note, and tests. Rule IDs remain stable; renamed or retired rules need aliases or migration notes. Generated files and fixture outputs must not obscure review diffs.
+
+### Section 6: Test Review
+
+Existing unit and fixture tests prove many intended paths and redaction invariants but do not establish production signal quality. The release must add:
+
+- A versioned labeled corpus containing combined configs, safe near-misses, vulnerable cases, malformed inputs, and supported real framework shapes.
+- A benchmark manifest that records expected object, finding, path, severity, confidence, and non-finding labels.
+- Aggregate blocking-pack precision of at least 95 percent and targeted recall of at least 85 percent.
+- Per blocking rule: at least 10 positive and 20 negative labeled cases before it can gate; rules below that evidence floor remain advisory.
+- Zero critical/high findings on the safe corpus unless explicitly labeled and reviewed.
+- 100 percent crash-free corpus execution and zero secret/path leak invariant failures.
+- Property/fuzz tests for ignore matching, path containment, schema parsing, rule operators, suppressions, and baseline compatibility.
+- Cross-platform installed-package smoke tests.
+
+### Section 7: Performance Review
+
+No production performance budget exists today. The release gate will measure cold scan wall time, peak RSS, files per second, output size, and rule-evaluation time. Initial local budgets are p95 under 10 seconds and peak RSS under 512 MiB for a 10,000-file, 100 MiB benchmark repository on a documented CI runner. Corpus scans must remain deterministic under constrained worker counts. Any parser timeout or budget skip must degrade scan health and identify the affected adapter without revealing content.
+
+### Section 8: Observability and Debuggability Review
+
+The scan receipt, coverage, diagnostics, fingerprints, CI gate summary, and SARIF properties are strong foundations. Missing pieces are stable CLI error codes, adapter-level coverage, rule maturity/calibration metadata, benchmark build identity, and a `doctor` command that validates runtime, packaged rules, schemas, writable output, and trusted-policy availability without scanning secret values.
+
+### Section 9: Deployment and Rollout Review
+
+The package is not published, CI covers one operating system, and there is no release workflow. The release sequence must be private corpus validation, package dry run, signed release candidate, trusted npm publish with provenance, installation verification from the registry, advisory CI rollout, then opt-in strict gating for the calibrated pack. Rollback means deprecating the bad package version, restoring the last verified rule-pack release, and documenting the affected schema/rule digest.
+
+### Section 10: Long-Term Trajectory Review
+
+The architecture should preserve a path to runtime adapters and a dashboard without requiring them now. Reversibility score: 4/5 if object rules, path rules, adapters, and policy authority are separate contracts; 1/5 if more logic is added to the monolithic detector and all rules remain nominally critical. Compatibility governance, deployment identity, and rule maturity are the debt controls that prevent a future platform from inheriting unstable data.
+
+Section 11 design review is skipped because no UI is in scope. Terminal and README identity are evaluated in the developer-experience phase.
+
+### Failure Modes Registry
+
+| Code path | Failure mode | Rescued now? | Test now? | User sees now? | Required state |
+| --- | --- | --- | --- | --- | --- |
+| Policy and suppressions | Repository policy suppresses policy-integrity findings | No | No | Hidden behind suppressed count | Unsuppressible integrity findings and trusted-policy gate |
+| Detector dispatch | Combined config exits after first recognized surface | No | No | Silent | Multi-adapter result plus coverage metadata |
+| File reading | Stat succeeds, then file is replaced or becomes unreadable | No | Partial | Crash | Read diagnostic and containment check |
+| Rule calibration | Condition count inflates confidence | N/A | Unit-tested behavior only | Misleading confidence | Empirical maturity and calibration |
+| Graph rule evaluation | Relationship claim evaluated as flat object posture | No | Partial | Overstated evidence | Typed path predicate and minimal path evidence |
+| Baseline | Rule-pack drift changes result identity | Partial | Yes | Comparison summary | Explicit compatibility and digest policy |
+| Output writer | Process interruption leaves partial artifacts | No | No | Partial files | Atomic artifact set and error code |
+| Release | Mutable action or package is compromised | No | No | Potentially invisible | Pinned actions, provenance, SBOM, checksums |
+| Scanner performance | Pathological file consumes excessive time or memory | Partial size cap | No budget test | Slow or killed process | Adapter budget, diagnostic, benchmark threshold |
+| Artifact privacy | Absolute root or internal policy metadata is uploaded | Partial | Partial | Shared leakage | Portable strict privacy default and leak suite |
+
+### Architecture and Release Diagrams
+
+State machine:
+
+```mermaid
+stateDiagram-v2
+  [*] --> ValidateInputs
+  ValidateInputs --> Scan: valid
+  ValidateInputs --> ConfigError: invalid strict input
+  Scan --> Evaluate: complete or diagnosed
+  Scan --> ScannerError: internal failure
+  Evaluate --> WriteArtifacts
+  WriteArtifacts --> AdvisoryComplete: no explicit gate
+  WriteArtifacts --> GatePassed: strict gates pass
+  WriteArtifacts --> FindingsBlocked: finding gate fails
+  WriteArtifacts --> CoverageBlocked: health or diagnostic gate fails
+  ConfigError --> [*]
+  ScannerError --> [*]
+  AdvisoryComplete --> [*]
+  GatePassed --> [*]
+  FindingsBlocked --> [*]
+  CoverageBlocked --> [*]
+```
+
+Error flow:
+
+```mermaid
+flowchart TD
+  E["Error"] --> K{"Known and recoverable?"}
+  K -->|Yes| D["Emit stable redacted diagnostic"]
+  D --> H["Degrade or mark incomplete"]
+  H --> S{"Strict profile?"}
+  S -->|Yes| B["Fail with classified exit code"]
+  S -->|No| A["Write advisory artifacts"]
+  K -->|No| I["Scanner internal error"]
+  I --> X["Best-effort cleanup; no clean claim"]
+```
+
+Deployment sequence:
+
+```mermaid
+sequenceDiagram
+  participant Dev as Maintainer
+  participant CI as Release CI
+  participant NPM as npm Trusted Publishing
+  participant User as Security Team
+  Dev->>CI: Push signed version tag
+  CI->>CI: Verify, benchmark, package, SBOM, checksums
+  CI->>NPM: OIDC publish with provenance
+  NPM-->>CI: Published package and attestation
+  CI->>CI: Install registry artifact and smoke test
+  CI-->>User: Release notes, digests, compatibility and rollback notes
+```
+
+Rollback flow:
+
+```mermaid
+flowchart TD
+  R["Release regression reported"] --> V["Reproduce against package and rule digest"]
+  V --> Q{"Security or gating impact?"}
+  Q -->|Yes| D["Deprecate affected npm version"]
+  Q -->|No| P["Patch forward"]
+  D --> L["Recommend last verified version"]
+  L --> N["Publish incident and migration note"]
+  N --> P
+  P --> C["Run full release contract"]
+```
+
+Stale diagram audit: the architecture flow in `docs/architecture.md` is stale because it implies graph construction precedes checks while the implementation currently evaluates object rules first. It must be corrected during the architecture task, then made true by implementation. No other touched ASCII architecture diagram is authoritative.
+
+### Dream State Delta
+
+Completing this plan yields a trustworthy, distributable CLI with portable evidence, a calibrated gate, and contracts suitable for later ingestion. It does not yield fleet history, centralized policy distribution, runtime interception, live attack simulation, ticketing integrations, or signed evidence. Those remain the delta to the 12-month control-plane ideal.
+
+### Production Release Contract
+
+AgentCSP may move from private alpha to public beta only when every P1 item below has evidence in CI:
+
+- The trusted-policy bypass and all unsuppressible-integrity tests pass.
+- The calibrated blocking pack meets the documented corpus precision, recall, sample-size, and zero-critical-safe thresholds.
+- Combined configuration fixtures prove multiple adapters can emit multiple surfaces from one file.
+- Graph-native blocking findings include a minimal typed source-to-sink path.
+- Fuzz/property suites and the corpus complete without crashes or secret/path leaks.
+- Linux, macOS, and Windows on supported Node LTS/current versions pass installed-package smoke tests.
+- Performance budgets pass on the documented benchmark runner.
+- CLI exit codes, strict profile, validation, rule explanation, doctor, and baseline workflows are documented and tested.
+- Manifest and policy compatibility contracts and golden migrations pass.
+- Release artifacts include provenance, SBOM, checksums, changelog, compatibility notes, and rollback instructions.
+- README claims match shipped behavior; runtime enforcement and platform claims are clearly future work.
+
+### Implementation Tasks
+
+- [ ] **CEO-T1 (P1, human: ~1d / CC: ~2h)** - policy - Establish a trusted CI policy boundary and unsuppressible integrity findings.
+  - Surfaced by: Security and threat model - repository-controlled policy can neutralize its own gate.
+  - Files: `packages/core/src/policy`, `packages/core/src/reports/gates.ts`, `packages/cli/src`, schemas, CI examples, tests.
+  - Verify: adversarial PR-policy fixtures cannot suppress integrity findings or pass strict CI.
+- [ ] **CEO-T2 (P1, human: ~3d / CC: ~6h)** - scanner architecture - Introduce composable multi-surface adapters without a big-bang rewrite.
+  - Surfaced by: Architecture review - first-match dispatch silently skips combined configuration surfaces.
+  - Files: `packages/core/src/scanner`, scanner tests, combined framework fixtures.
+  - Verify: one document emits all labeled surfaces and adapter coverage metadata deterministically.
+- [ ] **CEO-T3 (P1, human: ~3d / CC: ~6h)** - graph rules - Evaluate a small blocking pack over typed authority paths.
+  - Surfaced by: Architecture review - the claimed graph differentiator is currently reporting-only.
+  - Files: graph builder, rule schemas/engine, rules, reports, schemas, tests.
+  - Verify: every blocking path finding includes the minimal proven path and fails closed on graph diagnostics.
+- [ ] **CEO-T4 (P1, human: ~2d / CC: ~4h)** - risk model - Separate impact, exploitability, confidence, and rule maturity.
+  - Surfaced by: Test review - 362 of 383 rules are critical and confidence is structurally inflated.
+  - Files: risk scorer, rule schema/loader, report/SARIF renderers, rule metadata, tests.
+  - Verify: uncalibrated rules cannot enter the blocking pack; report rationale explains each dimension.
+- [ ] **CEO-T5 (P1, human: ~4d / CC: ~8h)** - validation - Build a labeled benchmark corpus and enforce release thresholds.
+  - Surfaced by: Test review - two synthetic fixtures do not prove precision or recall.
+  - Files: `benchmarks` or `examples/corpus`, benchmark scripts, package scripts, CI, docs.
+  - Verify: CI publishes deterministic precision, recall, duplicate, crash, leak, and performance results.
+- [ ] **CEO-T6 (P1, human: ~2d / CC: ~4h)** - scanner safety - Add read-time containment, rescued file reads, and atomic restrictive output writes.
+  - Surfaced by: Error map and security review - path races, read errors, and partial artifacts are not safely handled.
+  - Files: walker, safe reader, output writer, diagnostics, cross-platform tests.
+  - Verify: race, symlink, permission, interruption, and mode tests pass without out-of-root reads or partial output.
+- [ ] **CEO-T7 (P1, human: ~1d / CC: ~2h)** - CLI contract - Add strict profiles, classified exit codes, and actionable errors.
+  - Surfaced by: Error map - users must currently combine many flags and parse generic exit code 1.
+  - Files: CLI commands/options, core gate summary, usage and CI docs, tests.
+  - Verify: each failure class has a stable code, exit status, remediation text, and test.
+- [ ] **CEO-T8 (P2, human: ~3d / CC: ~6h)** - source analysis - Define parser support tiers and begin AST-backed TypeScript/JavaScript analysis.
+  - Surfaced by: Code quality review - regex data-flow approximation is presented with excessive confidence.
+  - Files: source adapters, package dependencies, detector extraction, source corpus, docs.
+  - Verify: supported syntax, aliasing, sanitizers, and unsupported-syntax diagnostics have labeled tests.
+- [ ] **CEO-T9 (P1, human: ~2d / CC: ~4h)** - operator workflow - Add `config validate`, `rules list/explain`, `doctor`, and deterministic baseline commands.
+  - Surfaced by: Observability review - the operational workflow stops at generating files.
+  - Files: CLI commands, core APIs, docs, CLI tests.
+  - Verify: installed-package command tests cover success, JSON output, redaction, and classified failure.
+- [ ] **CEO-T10 (P1, human: ~2d / CC: ~4h)** - manifest governance - Add portable privacy defaults, source identity, and compatibility policy.
+  - Surfaced by: Data flow and long-term review - absolute roots and unstable schema contracts block safe ingestion.
+  - Files: schemas, manifest builder, reports, golden manifests, compatibility docs.
+  - Verify: shareable artifacts contain no absolute roots or internal policy metadata; older supported manifests parse.
+- [ ] **CEO-T11 (P1, human: ~2d / CC: ~4h)** - release engineering - Build the cross-platform, provenance-backed release pipeline.
+  - Surfaced by: Deployment review - no release workflow, matrix, provenance, SBOM, or rollback procedure exists.
+  - Files: `.github/workflows`, package metadata, release scripts, changelog and release docs.
+  - Verify: release dry run produces verified tarballs, SBOM, checksums, provenance configuration, and registry smoke plan.
+- [ ] **CEO-T12 (P2, human: ~1d / CC: ~2h)** - open-source operations - Add contributor, governance, support, and compatibility documentation.
+  - Surfaced by: Deployment and long-term review - enterprise adoption needs an explicit maintenance contract.
+  - Files: `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `CHANGELOG.md`, support/release docs, issue templates.
+  - Verify: links, commands, security reporting route, version policy, and release ownership are internally consistent.
+- [ ] **CEO-T13 (P1, human: ~1d / CC: ~2h)** - product truth - Rewrite README and terminal identity around proven CLI behavior.
+  - Surfaced by: Strategic reframe - current control-plane and enforcement claims exceed shipped capability.
+  - Files: `README.md`, CLI banner, docs/product brief, architecture, roadmap, brand assets/tests.
+  - Verify: README quickstart works from the packed install and every capability claim maps to a test or explicit roadmap label.
+
+### Completion Summary
+
+| Review area | Result |
+| --- | --- |
+| Mode selected | Selective expansion |
+| System audit | Broad scanner with strong redaction, deterministic outputs, 383 rules, 114 tests; release evidence and trusted enforcement boundary are incomplete |
+| Step 0 | CLI-first AI security premise retained; product claim narrowed; production-critical expansions accepted |
+| Section 1, architecture | 4 issues |
+| Section 2, errors | 12 error paths mapped, 5 critical gaps |
+| Section 3, security | 6 required control groups, 3 high-severity boundaries |
+| Section 4, data flow | 7 shadow paths, 5 currently incomplete |
+| Section 5, quality | 3 issues; incremental extraction required |
+| Section 6, tests | Corpus and release diagram produced; 7 evidence gaps |
+| Section 7, performance | 4 missing budgets/measurements |
+| Section 8, observability | 5 gaps |
+| Section 9, deployment | 7 release risks |
+| Section 10, future | Reversibility 4/5 after planned boundaries; 4 debt controls |
+| Section 11, design | Skipped, no UI scope |
+| Not in scope | 8 items written |
+| What already exists | 10 reusable foundations mapped |
+| Dream state delta | Written |
+| Error/rescue registry | 12 methods, 5 critical gaps |
+| Failure modes | 10 total, 7 critical gaps |
+| Scope proposals | 9 accepted, 8 deferred or rejected |
+| Outside voice | Codex ran with 13 concerns; Claude unavailable; `[codex-only]` |
+| Lake score | 13 of 13 recommendations chose the more complete release option |
+| Diagrams | Dream state, architecture/data flow, state machine, error flow, deployment, rollback |
+| Stale diagrams | 1 |
+| Unresolved decisions | 0; premises were confirmed in the persisted goal before this phase |
+
+**Phase 1 complete.** Codex: 13 concerns. Claude subagent: unavailable. Consensus: 0/6 confirmed and 0 disagreements because the second voice was unavailable. All single-voice critical findings remain flagged. Passing to engineering review; design review is skipped because no UI is in scope.
+
+## Autoplan Phase 3: Engineering Review
+
+Review status: `[codex-only]`. The independent review found 13 additional implementation concerns: five critical and eight high. The existing 17 test files and 114 tests pass, but none of the new trust, identity, adapter, graph-rule, calibration, transaction, or benchmark contracts exists yet.
+
+### Scope Challenge
+
+The complexity gate is triggered: the production release touches more than eight files and more than two components. Autoplan's completeness rule keeps the accepted CLI scope, but the work must be sequenced through contract-first compatibility checkpoints. A single large rewrite is prohibited.
+
+Minimum complete release path:
+
+1. Freeze schema, identity, trust, enforcement, adapter, graph, artifact, and benchmark contracts.
+2. Implement scanner-safety and trusted-input controls without changing detector semantics.
+3. Introduce compact v0.2 artifacts and migration tests.
+4. Extract composable adapters and finding-independent graph relationships incrementally.
+5. Calibrate a small packaged blocking pack; keep all unsupported/heuristic rules advisory.
+6. Add lifecycle CLI commands and release/distribution workflows.
+7. Rewrite product claims only after the packed CLI passes the release contract.
+
+The following existing components are reused: Zod schemas, `stableId`, canonical JSON, scan diagnostics, coverage health, rule fingerprints, baseline comparison, graph relationship builders, report/SARIF renderers, package tarball verification, redaction checks, and the vulnerable/safe fixtures. New parallel representations must not be introduced where these contracts can be versioned.
+
+### Engineering Architecture Contracts
+
+#### 1. Trusted Inputs and Strict Invocation
+
+The scanner cannot prove that a workflow is branch-protected, but it can refuse unsafe strict-mode inputs and record what it validated.
+
+| Input | Advisory profile | `ci-strict` profile |
+| --- | --- | --- |
+| Built-in ignore set | Applied | Applied |
+| Project `.agentcspignore` | Applied and fingerprinted | Discovered but not applied |
+| Trusted ignore file | Optional | Optional; must resolve outside the scan root and match `--trusted-ignore-sha256` |
+| Project `agentcsp.yaml` | Advisory controls, suppressions, and trust annotations | May strengthen controls or lower trust only; cannot suppress blocking/integrity results |
+| Trusted policy | Optional | Optional, but if supplied it must resolve outside the scan root and match `--trusted-policy-sha256` |
+| Project `rules/` | Advisory origin only, quota-limited | Advisory origin only; never blocking or integrity |
+| Packaged calibrated rules | Advisory unless user gates | Sole source of blocking-pack membership |
+| Baseline inside scan root | Allowed with provenance warning | Rejected for `--fail-on-new` |
+| Trusted baseline | Optional | Must resolve outside the scan root and match `--baseline-sha256` |
+
+The CLI must document that real enforcement also requires a protected caller: a reusable workflow or base-revision policy outside pull-request control plus branch protection that requires the status check. The example gated workflow must use that pattern. A digest emitted after loading is not trust; strict mode verifies an expected digest supplied by the protected caller.
+
+Policy merge rules are monotonic in strict mode:
+
+- Trust may move only toward `untrusted`, never toward `trusted`.
+- Recommended controls may become stronger, never weaker.
+- Project suppressions annotate advisory output but cannot remove blocking or integrity results from gates.
+- Trusted suppressions may apply only to `suppressibility: trusted_policy`, must be narrow, owned, and expiring.
+- Integrity results use `suppressibility: never`.
+
+#### 2. Evaluation Pipeline
+
+```text
+CLI/config
+   |
+   v
+trusted-input resolver -----> input provenance + digests
+   |
+   v
+safe walker -----> bounded file descriptors + coverage diagnostics
+   |
+   v
+document parser cache -----> ParsedDocument | binary | unsupported | failed
+   |
+   v
+composable adapters -----> AdapterResult[]
+   |
+   v
+conservative reducer -----> normalized objects + field provenance + conflicts
+   |
+   +---------------------> object posture rules
+   |
+   v
+finding-independent relationship graph -----> graph validation
+   |
+   v
+graph path rules
+   |
+   v
+enforcement classification -> trusted policy -> baseline -> gates
+   |
+   v
+reporting-only attack-path selection -> portable artifact transaction -> exit code
+```
+
+`buildStaticGraph` must be split. Relationship extraction cannot consume findings. Report attack paths may join findings to relationships after rule evaluation, but report truncation limits must never constrain the evaluation graph.
+
+#### 3. Enforcement Classification
+
+Every rule and finding has sealed metadata:
+
+```text
+origin: builtin | project
+maturity: experimental | advisory | calibrated
+disposition: advisory | blocking | integrity
+suppressibility: trusted_policy | never
+support_tier: structured | ast | heuristic
+```
+
+Only packaged rules with `maturity: calibrated`, `disposition: blocking`, an eligible support tier, and current benchmark evidence may block. Project rules are always advisory regardless of their YAML. Scanner/config/rule-load failures are diagnostics with `diagnostic_class: integrity`; strict mode always fails on integrity diagnostics. Repository policy-weakening detections are integrity findings and are never suppressible.
+
+#### 4. Stable Identity and Baseline Compatibility
+
+Before adapter extraction, v0.2 introduces:
+
+- `normalization_version`
+- `finding_identity_version`
+- adapter-independent semantic object keys
+- source locators for multiple logical objects in one file
+- rule aliases for renamed or retired rules
+- compact `matched_object_ref` instead of embedding an entire surface object in each finding
+- a baseline envelope containing schema, scanner, normalization, identity, rule-pack, and pack-manifest versions
+
+Strict baselines require compatible identity and pack metadata. Bare v0.1 `findings.json` arrays remain readable only in advisory mode and can be converted by an explicit baseline migration command. ID migrations must be deterministic and covered by golden fixtures.
+
+#### 5. Adapter Result and Merge Semantics
+
+Each adapter returns:
+
+```text
+adapter_id, adapter_version, support_tier
+status: parsed | partial | unsupported | failed | not_applicable
+objects[], diagnostics[], recognized_sections[], unsupported_sections[]
+```
+
+All adapters for a file share one bounded parsed-document representation. The reducer uses semantic keys, unions actions and data classes, chooses the least-trusted trust level, ORs exposure/side-effect flags, ANDs reversibility, deduplicates evidence, and records field provenance. Conflicting structured values emit a stable diagnostic; a conflict cannot silently choose the less risky value. Multiple adapters emitting the same object may enrich one object but may not create duplicate IDs.
+
+#### 6. Rule Pack and Graph Eligibility
+
+A packaged pack manifest records pack ID/version, rule membership, rule digest, maturity, support tier, benchmark corpus digest, calibration timestamp, minimum scanner version, and enforcement eligibility. Strict mode selects this immutable packaged manifest, not repository metadata.
+
+The first blocking pack is restricted to fully structured configuration evidence and finding-independent typed relationships. Regex/heuristic source detections remain advisory until an AST adapter and its corpus qualify them. The full existing rule set remains available as `extended` advisory coverage; the default report must use a curated recommended pack so 1,400 overlapping critical results do not become the first-run experience.
+
+#### 7. Benchmark Protocol
+
+The benchmark is repository-level and versioned. Fixtures are licensed, synthetic, or sanitized with documented provenance; no customer or secret data is committed.
+
+Blocking eligibility requires:
+
+- Separate development, calibration, and holdout repositories.
+- Per-rule, micro, and macro precision/recall.
+- A defined duplicate key and negative-label unit.
+- At least 50 positive predictions and 100 labeled negative opportunities per blocking rule on holdout data.
+- Observed per-rule precision of at least 98 percent and a 95 percent Wilson lower confidence bound of at least 90 percent.
+- Per-rule recall of at least 85 percent for the declared supported scenario.
+- Aggregate blocking-pack precision of at least 98 percent and recall of at least 85 percent.
+- Independent second review for blocking labels; disagreements require adjudication before use.
+- Automatic removal from blocking eligibility when evidence count, support tier, corpus digest, or thresholds regress.
+
+The benchmark reports crash rate, duplicate rate, findings per repository, output amplification, p50/p95 time, peak RSS, parser coverage, and leak-invariant results. Synthetic safe/vulnerable fixtures remain regression tests, not the holdout set.
+
+#### 8. Artifact Profiles and Transaction Semantics
+
+One versioned schema supports two profiles:
+
+- `portable` is the default for JSON, Markdown, SARIF, and CI. It uses root-relative paths, omits policy reasons and owner identities, and contains compact object references.
+- `internal` is explicit and may include audit owner/reason fields, but never secret values or raw snippets.
+
+The current 79-file vulnerable fixture produces roughly 48 MiB of manifest JSON and 36 MiB of findings JSON. The v0.2 compact model must remove full-object duplication and avoid storing full findings twice. The release budget for that fixture is less than 10 MiB total uncompressed JSON, with no loss of referenced inventory or evidence.
+
+Outputs are published as a generation:
+
+1. Resolve and validate the canonical output parent.
+2. Acquire a bounded lock or fail with a classified concurrent-scan error.
+3. Write every selected artifact to a restrictive sibling staging directory.
+4. Parse and validate staged artifacts.
+5. Publish artifacts and write a completion receipt last.
+6. Remove stale staging data only when ownership markers match.
+
+Consumers treat a missing or invalid completion receipt as incomplete output. Windows rename behavior, existing destinations, parent symlinks, interruption, and concurrent scans require failure-injection tests.
+
+#### 9. Resource Governance
+
+The walker limit does not currently constrain direct policy and rule reads. The implementation must cap policy bytes, rule bytes, YAML depth/aliases, entries per policy, project rule count, conditions per rule, parsed nodes, total rule-object evaluations, and output count. Project resource-limit violations are integrity diagnostics in strict mode.
+
+The benchmark target is aligned with the current default: p95 under 15 seconds, peak RSS under 512 MiB, and deterministic output for a documented 5,000-file/100 MiB corpus on a pinned runner. A 10,000-file target is a later scale gate. In-process synchronous parsers cannot be timed out safely; untrusted parser and source-analysis work that needs deadlines must run in cancellable workers with bounded messages.
+
+#### 10. Environment-File Handling
+
+`.env*` files must not pass through the generic text reader. A dedicated bounded key scanner reads only enough bytes to identify valid key prefixes and discards value bytes without creating a full value-bearing string. Tests inject canary values and verify that objects, diagnostics, thrown errors, logs, staged files, and process-visible debug output never contain them.
+
+### Engineering Outside Voices
+
+#### CODEX SAYS (eng - architecture challenge)
+
+Codex found 13 issues. Its critical findings were incomplete trusted-policy authority, a cyclic graph plan, no enforceable integrity/suppressibility model, identity breakage during adapter extraction, and statistically insufficient benchmark thresholds. High findings covered adapter provenance, hostile policy/rule resource limits, blocking-pack trust, AST eligibility, artifact-profile contradictions, volatile fingerprints, non-transactional writes, and nonexistent timeout/isolation mechanisms.
+
+#### CLAUDE SUBAGENT (eng - independent review)
+
+Unavailable in this environment. This phase remains `[codex-only]`.
+
+| Dimension | Claude | Codex | Consensus |
+| --- | --- | --- | --- |
+| Architecture sound? | N/A | No until the contract phase above is implemented | Flagged, no two-model confirmation |
+| Test coverage sufficient? | N/A | Existing tests pass; production contracts are untested | Flagged, no two-model confirmation |
+| Performance risks addressed? | N/A | No; resource isolation and realistic budgets were missing | Flagged, no two-model confirmation |
+| Security threats covered? | N/A | Partially; ignore, rules, baseline, and workflow trust needed expansion | Flagged, no two-model confirmation |
+| Error paths handled? | N/A | No; transaction, compatibility, conflict, and worker errors were undefined | Flagged, no two-model confirmation |
+| Deployment risk manageable? | N/A | No until trusted publishing and protected invocation are proven | Flagged, no two-model confirmation |
+
+### Code Quality Decisions
+
+1. Split `detect.ts` by adapter family through an interface and reducer; do not move 40,000 lines mechanically in one commit.
+2. Split graph relationship extraction from report attack-path selection before adding graph rules.
+3. Centralize scanner version, schema version, pack version, and identity epoch constants.
+4. Replace full `matched_object` finding copies with compact refs and lookup helpers.
+5. Keep rule and policy parsing bounded and reuse one YAML/JSON/TOML safety wrapper.
+6. Add a typed application error hierarchy only at stable CLI/core boundaries; internal pure functions return typed results or diagnostics.
+7. Ratchet coverage for new modules to 100 percent branch coverage and establish a measured global baseline before raising it.
+
+### Test Diagram
+
+```text
+CODE PATHS / USER FLOWS                                      COVERAGE REQUIRED
+
+agentcsp scan
+|- parse profile/options
+|  |- advisory defaults                                      unit + installed CLI
+|  |- ci-strict valid invocation                             integration
+|  `- invalid combination/value                              unit + exit-code process test
+|- resolve trusted inputs
+|  |- external path + matching expected digest               integration
+|  |- inside-root path / digest mismatch                      security regression
+|  |- project ignore/rules/baseline in strict mode            adversarial fixture
+|  `- protected-workflow example                              static workflow verifier
+|- walk repository
+|  |- built-in ignores / hidden folders                       unit
+|  |- max files / max bytes / unreadable subtree              unit + integration
+|  |- symlink and file-replacement race                       failure injection
+|  `- .env key-only scanner with canary values                leak invariant
+|- parse and adapt
+|  |- one adapter / multiple adapters                         unit + combined fixture
+|  |- partial / unsupported / malformed                       unit + diagnostic golden
+|  |- duplicate semantic key                                  reducer property test
+|  `- conflicting risk fields                                 conservative-merge test
+|- evaluate
+|  |- object advisory rule                                    unit
+|  |- complete relationship graph                             graph golden
+|  |- graph blocking rule / no qualifying path                unit + corpus
+|  |- heuristic source edge                                   must remain advisory
+|  `- project rule quota or malformed rule                    adversarial fixture
+|- policy and baseline
+|  |- monotonic project policy                                property test
+|  |- trusted narrow suppression                              integration
+|  |- integrity finding suppression attempt                   security regression
+|  |- compatible baseline                                     golden migration
+|  `- legacy/incompatible/tampered baseline                   exit-code integration
+|- render artifact generation
+|  |- portable/internal profile                               leak suite for every format
+|  |- compact ref resolution                                  schema + round-trip test
+|  |- concurrent scan / interrupted staging                   failure injection
+|  |- Windows existing-target publish                         platform smoke
+|  `- completion receipt and fingerprint determinism          two-run golden
+`- exit
+   |- advisory complete                                       process E2E
+   |- finding gate                                            process E2E
+   |- integrity/config/coverage/internal failure               one process E2E per code
+   `- quiet output                                            stdout/stderr contract
+
+lifecycle commands
+|- config validate: local/trusted, JSON/text, valid/invalid     installed CLI integration
+|- rules list/explain: pack/maturity/unknown rule              installed CLI integration
+|- doctor: healthy/missing asset/unwritable output             installed CLI integration
+`- baseline create/migrate/diff: compatible/incompatible       golden + installed CLI
+
+release
+|- pack core + CLI                                             tarball verifier
+|- SBOM/checksum/provenance metadata                           release dry run
+|- Linux/macOS/Windows, Node 20/22/24                          smoke matrix
+`- install from produced tarball/registry candidate            E2E
+
+detection eval
+|- development/calibration/holdout split                       benchmark verifier
+|- per-rule and aggregate metrics                              deterministic metric test
+|- automatic blocking eligibility removal                     regression
+`- corpus license/provenance manifest                          static verifier
+```
+
+No model or prompt is executed by AgentCSP, so no LLM quality eval is required. The labeled detection corpus is the applicable eval suite.
+
+### Performance Findings
+
+- The current file loop is sequential; measure before adding concurrency, then introduce bounded workers only for isolated parser workloads.
+- `runRules` is rules-by-objects and needs a work budget plus indexing by object type and referenced fields.
+- `contextContentByPath` can retain large raw context strings through the full scan; replace it with bounded derived context signals or release content as soon as cross-reference analysis completes.
+- The current finding model causes extreme output amplification through repeated objects and duplicated finding arrays.
+- Graph evaluation must use the complete graph while reports use bounded projections; report limits cannot become detection limits.
+
+### Engineering Failure Modes
+
+| Code path | Production failure | Test | Error handling | User result | Critical gap now? |
+| --- | --- | --- | --- | --- | --- |
+| Trusted input resolver | PR-controlled path is labeled trusted | Missing | Missing | False passing gate | Yes |
+| Digest verification | Expected digest differs | Planned | Planned classified error | Clear config failure | No after task |
+| Adapter reducer | Two adapters disagree on authority | Missing | Missing | Silent less-risky merge | Yes |
+| Semantic identity | Refactor changes IDs | Missing | Missing | Baseline churn | Yes |
+| Graph extraction | Report truncation drops a blocking path | Missing | Missing | False negative | Yes |
+| Rule loader | Huge/deep project YAML exhausts resources | Missing | Partial parser error only | Crash or hang | Yes |
+| Environment scanner | Canary value reaches generic reader/error | Partial output leak tests | Missing key-only path | Secret retained in memory | Yes |
+| Baseline | Legacy ID list is treated as compatible | Missing | Missing | Incorrect new-risk gate | Yes |
+| Output transaction | Process stops after two of four files | Missing | Missing | Mixed-generation artifacts | Yes |
+| Concurrent output | Two scans publish to one directory | Missing | Missing | Corrupt or mixed output | Yes |
+| Fingerprint | `applied_at` changes semantic digest | Missing | None | Non-reproducible baseline | Yes |
+| Worker parser | Parser hangs or exceeds memory | Missing | No isolation | Scanner hang/OOM | Yes |
+| Pack selection | Project rule claims blocking maturity | Missing | No maturity model | Untrusted gate input | Yes |
+| Release publish | Wrong package content is published | Package dry checks exist | No publish workflow | Broken or unverifiable install | Yes |
+
+### Parallelization Strategy
+
+| Lane | Workstream | Depends on |
+| --- | --- | --- |
+| A | v0.2 schema, identity, compact refs, compatibility | Architecture contracts |
+| B | Trusted inputs, strict profile, resource quotas | Architecture contracts |
+| C | Benchmark format, corpus tooling, rule-pack manifest | Architecture contracts |
+| D | Release docs, OSS governance, README research | Architecture contracts; final claims wait for A-C |
+| E | Adapter reducer and graph split | A identity contract |
+| F | Lifecycle commands and artifact transaction | A and B |
+| G | Calibrated pack and release pipeline | C, E, F |
+
+Execution order: land the contract document first. Lanes A, B, and C may then run in parallel only in isolated worktrees. Lane D may prepare documentation concurrently but cannot finalize claims. Merge A-C, then run E and F with careful coordination around core schemas. Lane G and final README follow. Conflict warning: A, B, E, and F touch `packages/core`; their commits require sequential integration even if research/tests are prepared in parallel.
+
+### Engineering NOT in Scope
+
+- Runtime adapters, dashboard, hosted services, organization database, and general supply-chain scanning remain outside this CLI release.
+- Full AST/interprocedural support for all languages remains deferred; only evidence used by the initial blocking pack may be promoted.
+- Automatic ticket creation and vendor-native integrations remain deferred behind stable JSON/SARIF adoption.
+- Perfectly atomic directory replacement on every filesystem is not promised; the supported contract is staged validated files plus a completion receipt and classified recovery.
+
+### Engineering Implementation Tasks
+
+- [ ] **ENG-T1 (P1, human: ~2d / CC: ~4h)** - contracts - Implement trusted input provenance for policy, ignore, baseline, rules, and workflow examples.
+  - Verify: strict adversarial fixtures cannot use scan-root inputs or mismatched digests to pass.
+- [ ] **ENG-T2 (P1, human: ~2d / CC: ~4h)** - schema - Add enforcement disposition, suppressibility, origin, maturity, support tier, and integrity diagnostics.
+  - Verify: integrity results cannot be suppressed; project rules cannot block.
+- [ ] **ENG-T3 (P1, human: ~3d / CC: ~6h)** - identity - Ship compact v0.2 object refs, identity epochs, and baseline envelopes/migration.
+  - Verify: golden v0.1 migration and two-run stable IDs/fingerprints pass; fixture JSON is under 10 MiB.
+- [ ] **ENG-T4 (P1, human: ~3d / CC: ~6h)** - graph - Split complete relationship extraction from finding/report attack paths and add graph-rule evaluation.
+  - Verify: blocking evaluation sees the complete graph and every path finding references a minimal typed path.
+- [ ] **ENG-T5 (P1, human: ~4d / CC: ~8h)** - adapters - Add parsed-document caching, adapter results, conservative reducer, and combined-config coverage.
+  - Verify: multi-adapter, conflict, duplicate, partial, and unsupported cases are deterministic and diagnosed.
+- [ ] **ENG-T6 (P1, human: ~3d / CC: ~6h)** - calibration - Add immutable pack manifests and the statistically defined benchmark protocol.
+  - Verify: only eligible packaged rules block; benchmark regression automatically demotes a rule.
+- [ ] **ENG-T7 (P1, human: ~2d / CC: ~4h)** - resource safety - Bound project policy/rules, rule evaluation, parser workers, retained context, and output count.
+  - Verify: pathological YAML, regex/source, rule-count, and cancellation fixtures terminate with integrity diagnostics.
+- [ ] **ENG-T8 (P1, human: ~2d / CC: ~4h)** - artifact safety - Add key-only env scanning, portable/internal profiles, staged output, locking, and completion receipt.
+  - Verify: canary leak, concurrency, interruption, symlink parent, stale stage, and Windows tests pass.
+- [ ] **ENG-T9 (P1, human: ~1d / CC: ~2h)** - performance - Add fixed-runner benchmarks and object-type/rule indexing after baseline measurement.
+  - Verify: documented 5,000-file budgets and output-amplification budgets pass repeatedly.
+- [ ] **ENG-T10 (P1, human: ~2d / CC: ~4h)** - tests - Add property/fuzz, process E2E, compatibility golden, and cross-platform suites from the test diagram.
+  - Verify: `pnpm verify` includes every suite and emits a deterministic benchmark summary.
+
+### Engineering Completion Summary
+
+- Step 0, scope challenge: scope accepted under Autoplan completeness override; contract-first sequencing required.
+- Architecture review: 10 contract areas, 13 outside-voice issues.
+- Code quality review: 7 decisions.
+- Test review: diagram produced, 42 behavior/error branches grouped into 10 flows.
+- Performance review: 5 issues.
+- NOT in scope: written, 4 engineering deferrals.
+- What already exists: written, 10 reusable components.
+- Failure modes: 14 rows, 13 current critical gaps.
+- Outside voice: Codex ran; Claude unavailable; 0/6 two-model confirmations.
+- Parallelization: 7 lanes, 4 can prepare in parallel, integration remains sequenced around schemas/core.
+- Lake score: 10/10 recommendations chose the complete production contract.
+- Unresolved decisions: none; engineering choices above are conservative and within the confirmed CLI-first objective.
+
+**Phase 3 complete.** Codex: 13 concerns. Claude subagent: unavailable. Consensus: 0/6 confirmed and 0 disagreements because the second voice was unavailable. Passing to Phase 3.5 developer-experience review.
+
+## Autoplan Phase 3.5: Developer Experience Review
+
+### Scope Assessment
+
+AgentCSP is a developer-facing security CLI whose primary operator is an AppSec or platform-security engineer evaluating an unfamiliar repository. The current release is a private alpha: its core scanner, redaction, deterministic IDs, baselines, SARIF, packaged-rule integrity checks, and scan-health metadata are useful, but the public install path and automation contract are incomplete.
+
+Current weighted DX score: **2.5/10**. Current time to first trustworthy result: **more than 15 minutes for a source checkout and unavailable from the public registry**. Release target: **less than 2 minutes from a pinned package invocation to a bounded, explained result**.
+
+### Primary Persona
+
+| Attribute | Definition |
+|---|---|
+| Role | AppSec or platform-security engineer responsible for AI-enabled repositories |
+| Trigger | A pull request introduces an agent, MCP server, skill, instruction, memory, or privileged tool configuration |
+| Goal | Determine whether untrusted context can influence privileged action or sensitive data flow |
+| Environment | Local terminal first, then GitHub Actions or another CI runner |
+| Trust threshold | Evidence must identify the object, source, boundary, authority, and remediation without printing secret values |
+| Adoption posture | Advisory locally, then protected strict CI after calibration and baseline review |
+| Low tolerance for | Noise, repository-controlled suppressions, unclear coverage, unstable IDs, unverifiable packages, and overclaimed attack paths |
+
+### Developer Empathy Narrative
+
+I arrive with a repository I do not fully trust and a narrow question: can this agent read, call, remember, or execute something that crosses a security boundary? I open the README and see a large control-plane promise, but the first runnable path asks me to install a monorepo and build from source. The CI examples use an npm command that is not publicly available. Once I run the built CLI, the terminal prints many counters, writes very large artifacts for the demo fixture, and exits successfully even when analysis is degraded or findings exist. I now have to learn which flags make the scan suitable for automation, whether project policy can suppress the result, and whether a reported path was actually evaluated or inferred from regex evidence.
+
+That experience creates the wrong burden. I should not have to reverse-engineer the scanner's trust model before trusting its gate. A strong first run would give me a compact decision, coverage status, the top few proven or explicitly heuristic risk paths, a safe report location, and one next command to understand each rule. The strict CI profile should be a protected contract, not a collection of flags. Installation, identity compatibility, baseline migration, and release provenance should be visible before I am asked to make the tool part of a merge decision.
+
+### Competitive Benchmark
+
+| Product behavior | Reference | AgentCSP release requirement |
+|---|---|---|
+| Local scanning has a short documented path | [Semgrep local and CLI scans](https://semgrep.dev/docs/category/local-and-cli-scans) | A pinned one-command scan must work from the published package |
+| Community edition reaches a result in one or two commands | [Semgrep Community Edition](https://semgrep.dev/products/community-edition/) | Quickstart must lead with product use, not contributor setup |
+| Upgrade behavior is documented separately from installation | [Semgrep update guidance](https://semgrep.dev/docs/update) | Publish compatibility, deprecation, and baseline migration policy |
+| Multiple supported installation channels are explicit | [Trivy installation](https://trivy.dev/docs/v0.72/getting-started/installation/) | Start with npm plus verified tarball; add channels only after they are tested |
+| First steps explain the first useful command and result | [Trivy first steps](https://trivy.dev/dev/getting-started/) | Show expected receipt, first finding inspection, and clean-result coverage |
+| Security CLI documentation leads with install and usage | [Gitleaks](https://github.com/gitleaks/gitleaks) | Keep the README concise and move exhaustive reference material into docs |
+
+### Magical Moment
+
+The release-defining moment is a pinned `npx agentcsp@<version> scan .` that completes in less than two minutes and returns either:
+
+- a concise, redacted, typed path from untrusted context through an agent surface to privileged authority, including evidence completeness and a recommended control; or
+- a credible clean receipt that states exactly which surfaces were covered, skipped, degraded, or unsupported.
+
+Both outcomes must point to the report and one useful next command. A clean exit without complete coverage is not a magical moment; it is an ambiguous one.
+
+### Developer Journey
+
+| Stage | Operator question | Current friction | Release behavior |
+|---|---|---|---|
+| 1. Discover | Does this solve AI-agent security problems? | Current claims mix scanning with future control-plane enforcement | Position v0.2 as an AI agent repository posture scanner; label enforcement as roadmap |
+| 2. Evaluate | What is supported and how accurate is it? | Large feature catalogue, no calibrated-pack metrics | Publish a support matrix, maturity labels, benchmark method, and known limitations |
+| 3. Install | Can I trust and run the binary? | Package is not published; no provenance or checksum | Pinned npm package and tarball pass clean-environment smoke tests and provenance checks |
+| 4. Hello World | Can I get a result quickly? | Source build and noisy first receipt | One command, less than two minutes, compact receipt, portable artifacts |
+| 5. Understand | Why did this fire? | No rule explanation command; confidence can look stronger than evidence | `rules explain`, evidence completeness, support tier, maturity, and recommended control |
+| 6. Adopt CI | Can this safely gate a pull request? | Repository policy and baseline can influence the gate | Protected `ci-strict` profile with digest-pinned trusted inputs and classified exits |
+| 7. Govern | Can I tune it without losing integrity? | Project rules, policy, ignore, and baselines lack a clear trust matrix | Advisory project inputs; protected trusted inputs; deterministic compatibility envelopes |
+| 8. Operate | Can I diagnose, upgrade, and migrate? | No doctor, validation, lifecycle, changelog, or migration commands | `doctor`, config validation, baseline lifecycle, changelog, deprecation and support policy |
+| 9. Contribute | Can my team report false positives and add rules? | Missing contribution and issue workflows | Contribution guide, rule proposal template, false-positive template, security disclosure route |
+
+### First-Time Confusion Report
+
+| Elapsed time | Observation | Operator uncertainty | Resolution required |
+|---:|---|---|---|
+| 00:00 | README describes a control plane that enforces policy | Is this a scanner or an enforcement product? | Use one current-product description and a separately labeled roadmap |
+| 01:00 | Quickstart begins with workspace installation and build | Is there a supported package? | Lead with a real published package; move source build to contributing docs |
+| 04:00 | CI example invokes an unpublished npm version | Is the workflow runnable or illustrative? | Never publish nonfunctional CI examples as ready-to-use |
+| 07:00 | Default scan prints a long counter receipt | Which result should I act on first? | Print decision, coverage, top three findings, report path; move counters behind `--verbose` |
+| 10:00 | Scan exits `0` with findings or degraded coverage | Is this safe for automation? | Add `--profile ci-strict` and documented exit precedence |
+| 13:00 | Project policy and ignore behavior are automatic | Can the scanned branch weaken the gate? | Display input provenance and reject unpinned trusted inputs in strict mode |
+| 15:00 | Large JSON artifacts contain internal metadata | Can I upload these to CI? | Portable redacted profile by default, explicit internal profile, artifact size budget |
+
+### DX Outside Voices
+
+The independent Codex review inspected the CLI, docs, workflows, package metadata, tests, and release scripts. A Claude subagent was unavailable in this environment; missing voice results are recorded as N/A and are not treated as consensus.
+
+| Dimension | Claude | Codex | Consensus |
+|---|---:|---:|---|
+| Getting started in less than five minutes | N/A | No | Single-voice critical signal |
+| CLI naming and workflow are guessable | N/A | Partial | Single-voice high signal |
+| Error messages are actionable | N/A | No | Single-voice high signal |
+| Documentation is findable and complete | N/A | Partial | Single-voice medium signal |
+| Upgrade path is safe | N/A | No | Single-voice high signal |
+| Development environment is friction-free | N/A | No | Single-voice high signal |
+
+### DX Passes
+
+| Pass | Current | Target | Decision |
+|---|---:|---:|---|
+| 1. Getting started | 1/10 | 9/10 | Publish a pinned package and verified tarball; make `scan .` the first product command |
+| 2. CLI ergonomics | 4/10 | 9/10 | Add profiles, pack selection, lifecycle commands, human-readable sizes, quiet/verbose and machine-log contracts |
+| 3. Error quality | 2/10 | 9/10 | Use stable error codes, problem/cause/fix/help structure, classified exits, and subprocess contract tests |
+| 4. Documentation | 3/10 | 9/10 | Rebuild README around install, first scan, finding explanation, CI, privacy, and support; add a task-based docs index |
+| 5. Upgrade and compatibility | 1/10 | 9/10 | Publish changelog, compatibility epochs, rule aliases, baseline migration, supported-version and deprecation policies |
+| 6. Development environment | 5/10 | 9/10 | Test supported Node versions and operating systems; remove platform-specific temp paths; verify clean-source bootstrap |
+| 7. Community and support | 3/10 | 8/10 | Add private disclosure, contribution, conduct, issue, rule proposal, false-positive, and governance workflows |
+| 8. Measurement and feedback | 2/10 | 8/10 | Track cold-install TTHW, release smoke tests, pack precision/recall, false-positive reports, and artifact budgets |
+
+Target weighted DX score after implementation: **8.8/10**.
+
+### Error Contract
+
+| Case | Current | Required |
+|---|---|---|
+| Invalid option dependency | `agentcsp: --fail-on-new requires --fail-on` with exit 1 | `AGENTCSP-E1002 configuration error`, problem, fix, help target, exit 2 |
+| Missing scan root | Raw `ENOENT` with exit 1 | `AGENTCSP-E1001 input error`, normalized path, remediation, exit 2 |
+| Incomplete strict scan | Multiple optional flags and possible exit 0 | `AGENTCSP-E3001 integrity gate failed`, failed dimensions, remediation, exit 3 |
+
+Exit precedence is: internal/output failure (`4`) > invalid configuration or trusted input (`2`) > integrity/coverage failure (`3`) > finding gate (`1`) > success/advisory (`0`). Text and JSON log formats must carry the same stable code.
+
+### DX Implementation Checklist
+
+- [ ] Publish one truthful product identity: AI agent repository posture scanner.
+- [ ] Support `npx agentcsp@<pinned-version> scan .` from a clean environment.
+- [ ] Keep time to first trustworthy result below two minutes.
+- [ ] Add `advisory` and protected `ci-strict` profiles.
+- [ ] Add `recommended` and explicit `extended` rulesets.
+- [ ] Print a compact first-run receipt with coverage and top actionable evidence.
+- [ ] Add `config validate`, `rules list`, `rules explain`, `baseline create|diff|migrate`, `doctor`, and `version --json`.
+- [ ] Implement stable error codes, classified exits, text/JSON logs, and contract tests.
+- [ ] Make portable redacted artifacts the default and internal metadata explicit.
+- [ ] Document supported surfaces, evidence maturity, privacy, compatibility, upgrades, and troubleshooting.
+- [ ] Verify Linux, macOS, and Windows on supported Node releases.
+- [ ] Publish provenance, SBOM, checksums, changelog, support policy, and rollback procedure.
+- [ ] Add contribution, conduct, private disclosure, false-positive, and rule-proposal workflows.
+- [ ] Run cold-install, TTHW, package, artifact-size, and calibrated-pack gates on every release candidate.
+
+### DX Implementation Tasks
+
+1. **DX-01 (P1): Safe automation profile** - implement protected `ci-strict`, trusted-input provenance, classified exits, and a corrected CI example.
+2. **DX-02 (P1): Public golden path** - publishable package metadata, clean tarball/registry smoke tests, pinned install and first scan under two minutes.
+3. **DX-03 (P1): Compact actionable receipt** - decision, coverage, top three findings, evidence status, report path, and verbose counters.
+4. **DX-04 (P1): Lifecycle CLI** - config, rules, baseline, doctor, and machine-readable version commands.
+5. **DX-05 (P1): Error contract** - stable codes, problem/cause/fix/help rendering, JSON logs, exit precedence, and subprocess tests.
+6. **DX-06 (P1): Artifact safety** - portable/internal profiles, staged generation, restrictive permissions, completion receipt, and size budgets.
+7. **DX-07 (P1): Cross-platform release** - supported runtime matrix, immutable action pins, provenance, SBOM, checksums, and rollback evidence.
+8. **DX-08 (P1): Documentation architecture** - launch README, docs index, task guides, compatibility, upgrade, support, and troubleshooting.
+9. **DX-09 (P2): Community trust** - contribution, conduct, governance, disclosure, issue, rule, and false-positive workflows.
+
+### DX Completion Summary
+
+Phase 3.5 is complete. DX overall is 2.5/10 and current TTHW is unavailable from the registry or more than 15 minutes from source; the target is less than 2 minutes. Codex reported 13 concerns. Claude was unavailable, so no two-model consensus is claimed. No taste disagreement was surfaced: the required changes follow directly from the locked local-first CLI direction and enterprise trust requirements.
+
+## Autoplan Phase 4: Consolidated Release Contract
+
+This section is the authoritative v0.2 release plan. When an earlier CEO threshold, engineering threshold, legacy quality-bar item, README claim, or roadmap statement conflicts with this contract, this section wins. The large `Quality Bar` below remains supporting backlog and rationale, not a release checklist.
+
+### Release Position
+
+v0.2 is an **AI agent repository posture scanner**, not a runtime enforcement control plane. It discovers agent surfaces, normalizes authority and data-flow evidence, evaluates bounded advisory static rules, and emits portable artifacts. Runtime blocking, dashboard workflows, and general software supply-chain scanning remain outside this release.
+
+### P0 Sequence
+
+| Order | Contract | Owner | Required evidence |
+|---:|---|---|---|
+| 1 | Trusted-input boundary and `ci-strict` profile | Core + CLI | Adversarial tests prove repository policy, rules, ignore files, and baselines cannot weaken protected gates |
+| 2 | Stable v0.2 identities and enforcement metadata | Core schemas | Schema fixtures, compatibility tests, baseline migration, rule aliases, fingerprint stability |
+| 3 | Dedicated safe readers and resource governance | Scanner | `.env` key-only tests, file/directory quotas, pathological parser tests, normalized diagnostics |
+| 4 | Adapter fan-out and finding-independent graph | Scanner + graph | Mixed-config fixtures, merge/provenance tests, graph-before-rules assertions, typed-path tests |
+| 5 | Curated recommended pack and benchmark corpus | Detection engineering | Conformance evidence for advisory rules; holdout metrics and adjudication records before any rule becomes blocking-eligible |
+| 6 | Compact transactional artifacts | Reports | Portable/internal profile tests, generation receipt, restrictive permissions, interruption recovery, size budget |
+| 7 | Classified CLI and lifecycle commands | CLI | Subprocess golden tests for stdout, stderr, JSON logs, commands, and exit precedence |
+| 8 | Verified release candidate | Release engineering | Local clean package install plus hosted OS/runtime tarball-install matrix, provenance-ready GitHub artifacts, SBOM, checksums, and rollback procedure |
+
+### P1 Sequence
+
+| Order | Contract | Owner | Required evidence |
+|---:|---|---|---|
+| 1 | Launch README and task-based documentation | Product + DX | Cold-reader walkthrough reaches first trustworthy result in less than two minutes |
+| 2 | Open-source trust surfaces | Maintainers | Private disclosure route, support policy, contribution guide, conduct, governance, issue templates |
+| 3 | Release observability | Core + release | Diagnostic summaries, benchmark trend, artifact budgets, and failure-reproduction bundle without secret values |
+| 4 | Advisory extended pack | Detection engineering | Each rule has maturity, support tier, false-positive guidance, and nonblocking default |
+
+### Calibrated Detection Gate
+
+A rule may block strict CI only when it is in the signed or packaged `recommended` pack manifest, uses structured or typed-path evidence, and passes an independent holdout with at least 50 positive predictions and 100 negative opportunities. Required observed precision is at least 98%, Wilson lower bound at least 90%, and recall at least 85%. Two reviewers or one reviewer plus adjudication must validate labels. Failure automatically demotes the rule to advisory. These engineering thresholds supersede the smaller CEO proposal.
+
+### Performance and Artifact Gate
+
+The v0.2 fixed scale gate is 5,000 files and 100 MiB of eligible input, p95 under 15 seconds, and peak RSS below 512 MiB on the documented reference runner. The default portable JSON output for the vulnerable fixture must remain below 10 MiB. The 10,000-file target is deferred to v0.3 and does not block v0.2. Report graph truncation may limit presentation only; it must never limit evaluation.
+
+### Release Definitions of Done
+
+The **advisory public preview** is approved when every scanner-safety and protected-CI P0 is covered by passing tests, no critical or high product-security issue remains unresolved, all local release gates and clean-package installation pass, artifacts validate against exported schemas, public claims remain static and advisory, and the pushed commit passes the hosted Linux/macOS/Windows compatibility matrix. This release level may contain no automatically blocking rules. npm publication is not required for the source-distributed preview and must not be claimed until the protected registry workflow has run successfully.
+
+An **enforcement-eligible release** additionally requires the recommended pack to satisfy the independent calibration gate, deterministic package and source scans across every supported runtime, signed registry provenance, and an independently observed clean-room time to first trustworthy result below two minutes. v0.2 is not enforcement-eligible. A passing unit suite alone is insufficient for either release level.
+
+### Cross-Phase Themes
+
+| Theme | Independent phases | Release response |
+|---|---|---|
+| Repository-controlled inputs can weaken CI | CEO, Engineering, DX | Protected strict profile, expected digests, external trusted inputs, unsuppressible integrity findings |
+| Current output overstates evidence quality | CEO, Engineering, DX | Maturity/support metadata, typed paths, heuristic advisory status, bounded recommended pack, explicit conformance limits |
+| Artifact size and privacy are unsafe for routine CI sharing | CEO, Engineering, DX | Compact references, portable default, artifact budget, transactional generation |
+| Graph architecture is downstream of findings | CEO, Engineering, DX | Build finding-independent graph before graph/path rule evaluation |
+| Release and lifecycle contract is incomplete | CEO, Engineering, DX | Lifecycle commands, compatibility epochs, cross-platform package verification, provenance and rollback |
+| Product claims exceed current behavior | CEO, DX | Scanner-first v0.2 positioning; enforcement and dashboard clearly deferred |
+
+### Decision Audit Trail
+
+<!-- AUTONOMOUS DECISION LOG -->
+
+| # | Phase | Decision | Classification | Principle | Rationale | Rejected |
+|---:|---|---|---|---|---|---|
+| 1 | CEO | Keep v0.2 focused on AI-agent repository security | Auto-decided | User intent | The user explicitly removed general supply-chain scope | Expanding to a generalized supply-chain platform |
+| 2 | CEO | Position current release as a posture scanner | Auto-decided | Truthful product boundary | Runtime enforcement does not exist yet | Calling v0.2 an enforcing control plane |
+| 3 | CEO | Optimize for evidence quality over rule count | Auto-decided | Security-team value | High-confidence paths are more useful than hundreds of uncalibrated criticals | Continuing rule-volume expansion |
+| 4 | CEO | Defer dashboard until data contracts stabilize | Auto-decided | Sequence dependency | CLI schemas, identities, and evidence semantics are prerequisites | Building UI in parallel |
+| 5 | Engineering | Require protected, digest-pinned strict inputs | Auto-decided | Threat model | The scanned repository is an adversarial boundary | Trusting a path because it is named trusted |
+| 6 | Engineering | Separate graph facts from findings | Auto-decided | Architecture correctness | Findings cannot be the source of graph facts used to justify findings | Preserving the cyclic pipeline |
+| 7 | Engineering | Version object and finding identity semantics | Auto-decided | Compatibility | Baselines and suppressions are public contracts | Silent ID changes during parser refactors |
+| 8 | Engineering | Fan out adapters and merge conservatively | Auto-decided | Coverage integrity | One file can contain multiple agent surfaces | First-match parser dispatch |
+| 9 | Engineering | Make project rule and policy inputs advisory in strict mode | Auto-decided | Trust boundary | Pull-request contents cannot define their own gate | Allowing repository suppressions to block enforcement results |
+| 10 | Engineering | Use a dedicated `.env` key reader | Auto-decided | Secret minimization | Values should never enter generic text buffers by default | Reading full env files then discarding values |
+| 11 | Engineering | Adopt statistically bounded blocking eligibility | Auto-decided | Precision objective | Enterprise gates require reproducible calibration | Severity labels as a proxy for accuracy |
+| 12 | Engineering | Fix v0.2 scale at 5,000 files/100 MiB | Auto-decided | Measurable release | A credible fixed benchmark is preferable to an untested aspirational number | Making 10,000 files a v0.2 blocker |
+| 13 | DX | Provide advisory and strict profiles | Auto-decided | Progressive adoption | Safe local discovery and protected automation have different contracts | Requiring operators to compose many safety flags |
+| 14 | DX | Default to a curated recommended ruleset | Auto-decided | Time to value | First-run output must be bounded and actionable | Loading every experimental rule by default |
+| 15 | DX | Add classified errors and lifecycle commands | Auto-decided | Operability | CI and upgrades need stable machine contracts | One generic exit and scan-only CLI |
+| 16 | DX | Default to portable redacted artifacts | Auto-decided | Privacy | CI artifacts should be shareable without internal ownership metadata | Emitting internal metadata by default |
+| 17 | DX | Gate release on a clean-room under-two-minute path | Auto-decided | User experience | Installation and first trustworthy evidence are product requirements | Treating source build success as product readiness |
+| 18 | Detection review | Keep v0.2 rules advisory after rejecting a detector-derived holdout | Reviewer-decided | Evidence integrity | Generated parser cases do not estimate production precision or justify automatic blocking | Promoting `AGENTCSP-RUNTIME-001` from a synthetic 150-case matrix |
+
+### Detection Calibration Review (2026-07-15)
+
+- `AGENTCSP-RUNTIME-001` passed a 150-case generated parser and rule conformance matrix.
+- Independent review rejected treating that matrix as a production holdout because labels and cases were detector-derived and heavily templated.
+- The rule remains advisory. v0.2 has no calibrated blocking rules.
+- Runtime enum matching was narrowed, active profiles are resolved explicitly, ambiguous posture is diagnosed, and evidence records redacted parser and field provenance.
+- `docs/detection-quality.md` is the release source of truth for promotion criteria and residual static-analysis limits.
+
+### Gate Status
+
+CEO verdict: v0.2 remains a public-preview advisory release candidate until the final product-security review is green and the pushed commit completes the hosted Linux/macOS/Windows matrix. Automatic blocking remains unapproved until independent calibration exists. Engineering verdict: the implementation and local release gates satisfy the advisory CLI contract, subject to that hosted run. DX verdict: source and clean-package workflows are documented and tested; public-registry time-to-first-result is an enforcement-eligible release requirement and cannot be claimed before publication. Design review is not applicable because v0.2 has no UI scope. No user challenge or taste decision remains unresolved; all scope choices follow the explicit CLI-first, AI-security-only direction.
+
 ## Quality Bar
 
 A finding should be considered production-grade when it includes:

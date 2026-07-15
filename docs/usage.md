@@ -1,142 +1,203 @@
 # Usage
 
-AgentCSP starts with a local CLI scan.
+## Build From Source
+
+```bash
+corepack enable
+pnpm install --frozen-lockfile
+pnpm build
+pnpm agentcsp version --json
+```
+
+The repository currently distributes a source build. npm publication is handled as a separate release step.
+
+## Scan
 
 ```bash
 agentcsp scan [path] --out .agentcsp
 ```
 
-The path defaults to the current directory. The output directory defaults to `.agentcsp`. Relative output and baseline paths are resolved from the scanned project root; absolute paths are honored as provided.
+`path` defaults to the current directory. Relative output, config, and baseline paths are resolved from the scan root. The output must be a dedicated directory, not the scan root itself.
 
-The output path must be a dedicated directory outside or below the scanned root, not the scanned root itself. AgentCSP rejects root-as-output because repeated scans could otherwise ingest stale `agent-manifest.json`, `findings.json`, `report.md`, or SARIF artifacts as project input.
-
-Interactive scans print a bounded terminal summary with finding counts, active triage, action-plan status, scan health, diagnostics, coverage, CI gate status, CI blocker mix, and explicit truncation flags for top risks, action plans, high-risk object previews, and attack paths. Use this as a scan receipt, not as the audit artifact. JSON, Markdown, and SARIF remain the authoritative outputs.
-
-Use `--quiet` for CI jobs or scripts that should rely only on output files and exit codes:
-
-```bash
-agentcsp scan . --out .agentcsp --format json,md,sarif --quiet
-```
-
-## Outputs
-
-```text
-.agentcsp/agent-manifest.json
-.agentcsp/findings.json
-.agentcsp/report.md
-.agentcsp/agentcsp.sarif
-```
-
-`agent-manifest.json` includes `inventory_summary`, a deterministic rollup of normalized objects by surface type, trust level, data class, action, and high-authority posture. It also includes `triage_summary`, a deterministic rollup of total findings, active findings, suppressions, severity, confidence, surface types, recommended controls, risk drivers, top rules, and top active risks. Top active risks include compact risk factors such as trust level, data classes, actions, external reach, secret exposure, untrusted-to-privileged influence, trust-boundary status, primary risk driver, ordered risk drivers, impact, and control objective. Each finding also includes a sanitized `risk_summary` with ordered risk drivers, impact, control objective, and bounded analyst notes derived from normalized metadata. The manifest also includes `action_plan`, a bounded prioritized remediation list with response tiers, risk drivers, validation steps, remediation steps, truncation metadata, baseline status, and deterministic owner workload summaries for routing work across agent platform, runtime platform, CI/CD, identity/secrets, data/RAG, and application-security owners. Owner summaries include response-tier counts, control mix, surface mix, risk-driver mix, and bounded top action IDs. The Markdown report renders inventory, triage, and action-plan summaries near the top for human review.
-
-`metadata.config` captures the safe scan contract behind the output, including requested formats, traversal limits, hidden/log settings, CI gates, and whether policy or baseline inputs were configured. Raw output, policy, and baseline paths are not copied into this metadata; path-sensitive details stay redacted or scoped elsewhere.
-
-`metadata.fingerprint` provides a deterministic SHA-256 content fingerprint for correlating equivalent scans across CI runners and workstations. It excludes the scan timestamp, host-absolute root path, and fingerprint field itself.
-
-`metadata.rule_pack` captures the rule baseline behind the output, including a SHA-256 fingerprint of the normalized rule set, built-in rule count, project-local rule count, total rules loaded, redacted rule diagnostic count, and coverage rollups by category, severity, and target surface. It does not emit custom rule file paths or rule contents.
-
-`scan_coverage` records files indexed, oversized files, a bounded root-relative oversized-file preview, ignored entries, skipped hidden/log directories, diagnostic counts, whether `max_files` was reached, and explicit `scan_health`. AgentCSP output directories such as `.agentcsp`, `.agentcsp-*`, and `.agentcsp_*` are ignored by default, and a custom `--out` directory is also ignored when it lives inside the scanned root. This prevents repeated scans from ingesting prior manifests, findings, reports, or SARIF files. Use coverage to catch partial or parser-degraded scans before treating a quiet report as clean. `scan_health: "complete"` means the configured scope completed cleanly, `"degraded"` means the scan completed with parser or oversized-file health signals, and `"incomplete"` means traversal missed part of the configured scope. `scan_health_reasons` gives stable machine-readable reasons. When traversal reaches `max_files`, AgentCSP also emits a redacted `SCAN_MAX_FILES_REACHED` diagnostic so CI and dashboards can treat incomplete scans as scan-health events.
-
-Tune traversal limits with:
-
-```bash
-agentcsp scan . --max-file-size 1048576 --max-files 5000
-```
-
-Use `--include-logs` when transcripts, cached tool outputs, or generated run summaries may be replayed into future agent context:
-
-```bash
-agentcsp scan . --include-logs
-```
-
-`diagnostics` records redacted scan health warnings, such as malformed MCP, runtime, workflow, package, policy, rule, or tool definition files, transient traversal read/stat failures, and incomplete traversal caused by `max_files` exhaustion. `scan_coverage.diagnostics_total`, `diagnostics_warnings`, `diagnostics_errors`, and `diagnostics_info` provide stable machine-readable counts for CI and dashboards. Treat diagnostics as evidence that a file may need syntax repair, scan-scope tuning, or manual review before relying on a quiet scan.
-
-## CI Behavior
-
-AgentCSP does not fail CI by default. A completed scan exits with code `0` even when findings are present.
-
-Use `--fail-on` to opt into failure behavior:
-
-```bash
-agentcsp scan . --fail-on high
-```
-
-Supported values are `critical`, `high`, `medium`, and `low`.
-
-Use `--fail-on-confidence` with `--fail-on` when a CI gate should require both impact and confidence:
-
-```bash
-agentcsp scan . --fail-on high --fail-on-confidence high
-```
-
-Supported confidence values are `very_high`, `high`, `medium`, and `low`. If no confidence threshold is supplied, severity-only behavior is unchanged.
-
-Active suppressions in `agentcsp.yaml` are excluded from `--fail-on` gates. Expired suppressions are not excluded.
-
-Use `--fail-on-expired-suppressions` when CI should fail on stale accepted-risk records even without a severity gate:
-
-```bash
-agentcsp scan . --fail-on-expired-suppressions
-```
-
-Policy `recommended_controls` can change the recommended control shown in JSON, Markdown, and SARIF, but they do not suppress findings or change `--fail-on` behavior. JSON retains the full policy-control reason for internal audit, while Markdown and SARIF redact the reason and show only control direction, match scope, and matched-field context.
-
-Use `--fail-on-diagnostics` when parse failures in security-relevant files should fail CI:
-
-```bash
-agentcsp scan . --fail-on-diagnostics
-```
-
-This remains separate from finding severity gates. It is useful for repositories where malformed MCP, runtime, workflow, package, policy, rule, or tool-definition files, or incomplete scans caused by traversal limits, should block a release until the scan can inspect them reliably.
-
-Use `--fail-on-scan-health` when scan completeness itself should be a gate:
-
-```bash
-agentcsp scan . --fail-on-scan-health degraded
-```
-
-`degraded` fails on degraded or incomplete scans, including oversized skipped files and parser-degraded scope. `incomplete` fails only when traversal missed part of the configured scope, such as `max_files` exhaustion or unreadable directories. This gate is useful when a quiet scan should never be treated as clean unless AgentCSP inspected the configured scope.
-
-## Baselines
-
-Use a previous `findings.json` or `agent-manifest.json` as a baseline when introducing AgentCSP to an existing project:
-
-```bash
-agentcsp scan . --baseline .agentcsp/agent-manifest.json --out .agentcsp
-```
-
-The manifest and Markdown report include a baseline comparison with new, existing, and resolved finding counts, plus severity, confidence, and risk-driver drift for new findings. When the baseline is an `agent-manifest.json` with `metadata.fingerprint`, `baseline_comparison.baseline_fingerprint` records the prior scan fingerprint so CI can prove which accepted baseline was used. When the baseline manifest includes `metadata.rule_pack.fingerprint`, `baseline_comparison.baseline_rule_pack_fingerprint` records the prior detection baseline as well. Current findings receive `baseline_status: "new"` or `baseline_status: "existing"` when a baseline is provided. New and resolved finding ID previews are bounded; `baseline_id_limit` and the `*_ids_truncated` flags make it explicit when the preview arrays are not complete inventories.
-
-Relative `--baseline` paths are resolved from the scanned project root. This keeps multi-repo CI jobs stable when the command is launched from a parent workspace or automation directory. Baselines inside the scanned root are emitted as root-relative paths in JSON, Markdown, and SARIF. If the baseline file lives outside the scanned root, AgentCSP reads it normally but emits `<external-baseline>` in JSON, Markdown, SARIF, and baseline read errors instead of exposing the absolute local path.
-
-Use `--fail-on-new` with `--baseline` and `--fail-on` when CI should fail only on newly introduced risk:
+The default scan is equivalent to:
 
 ```bash
 agentcsp scan . \
-  --baseline .agentcsp/agent-manifest.json \
-  --fail-on high \
-  --fail-on-confidence high \
-  --fail-on-new
+  --profile advisory \
+  --artifact-profile portable \
+  --ruleset recommended \
+  --format json,md \
+  --out .agentcsp
 ```
 
-## SARIF
-
-Use SARIF when integrating AgentCSP with CI systems or code-scanning platforms:
+Add SARIF for code scanning:
 
 ```bash
-agentcsp scan . --format json,md,sarif --out .agentcsp
+agentcsp scan . --format json,md,sarif
 ```
 
-The generated SARIF file is:
+Use `--quiet` for automation and `--verbose` for detailed traversal counters. The terminal receipt is a bounded summary; generated artifacts are authoritative.
+
+## Outputs
+
+| File | Purpose |
+| --- | --- |
+| `agent-manifest.json` | Versioned AI agent surface, relationship, coverage, and triage inventory |
+| `findings.json` | Machine-readable findings |
+| `report.md` | Analyst-readable report and Static Blast-Radius Summary |
+| `agentcsp.sarif` | Optional SARIF 2.1.0 output |
+| `receipt.json` | Completion record with artifact sizes and SHA-256 digests |
+
+Portable output uses stable references instead of embedding full normalized objects in every finding. Use the internal profile only for protected local analysis:
+
+```bash
+agentcsp scan . --artifact-profile internal
+```
+
+Internal artifacts retain parser metadata, policy ownership, and full normalized objects. Secret values and evidence snippets remain redacted, but the artifact should still be treated as sensitive.
+
+## Scan Scope
+
+Default included hidden paths:
 
 ```text
-.agentcsp/agentcsp.sarif
+.codex .agents .claude .cursor .github .well-known
 ```
 
-SARIF run properties include `agentcsp_scan_config`, `agentcsp_rule_pack`, `agentcsp_inventory_summary`, `agentcsp_triage_summary`, `agentcsp_action_plan`, `agentcsp_ci_gate_summary`, `agentcsp_baseline_comparison`, `agentcsp_scan_coverage`, `agentcsp_diagnostics`, and `agentcsp_static_blast_radius` so CI systems can consume scan-level context without parsing Markdown. The CI gate summary includes blocker severity/confidence mixes, diagnostic mix by severity/parser/code, suppression scope posture, broad active suppression previews, and bounded blocker IDs for dashboard routing. Baseline comparison includes new-finding severity, confidence, and risk-driver drift mixes for release review. Rules and results include precision, tags, rank, stable AgentCSP partial fingerprints for result correlation, and GitHub code-scanning compatible `security-severity` metadata. When a baseline is provided, SARIF results include `baselineState` values for current findings.
+Default excluded paths include `.git`, dependency directories, build output, coverage, caches, prior AgentCSP output, and logs. Use:
 
-GitHub code-scanning workflow examples are available in `examples/ci/`. See `docs/ci.md` for advisory and gated rollout patterns.
+```bash
+agentcsp scan . --no-hidden
+agentcsp scan . --include-logs
+agentcsp scan . \
+  --max-file-size 1048576 \
+  --max-files 5000 \
+  --max-directories 10000 \
+  --max-entries-per-directory 10000
+```
 
-## Scanner Safety
+The advisory profile supports `.agentcspignore`. `ci-strict` ignores repository-controlled ignore files.
 
-AgentCSP does not read or emit secret values by default. For `.env*` files, it records file presence and key names only. Evidence snippets are redacted, and raw file contents are not written to the manifest. Markdown reports use `<scan-root>` instead of printing the absolute local scan path. RAG and memory files are reduced to normalized content signals rather than raw text.
+`scan_coverage.scan_health` is:
+
+- `complete`: configured scope completed without health signals
+- `degraded`: parse failures or oversized files reduced confidence
+- `incomplete`: traversal did not cover the configured scope
+
+## Strict CI
+
+```bash
+agentcsp scan . \
+  --profile ci-strict \
+  --ruleset recommended \
+  --format json,md,sarif \
+  --quiet
+```
+
+`ci-strict` ignores repository policy, project rules, and `.agentcspignore`; it enables diagnostic, expired-suppression, and incomplete-scan integrity gates. It does not turn advisory findings into automatic blockers.
+
+Use protected external policy with a digest:
+
+```bash
+agentcsp scan . \
+  --profile ci-strict \
+  --config /opt/security/agentcsp.yaml \
+  --config-sha256 "$AGENTCSP_POLICY_SHA256"
+```
+
+Trusted policy and baseline inputs must resolve outside the scan root, be regular files, remain within size limits, and match the expected SHA-256 digest. AgentCSP parses the bytes read from the verified open file handle; it does not reopen the path after approval.
+
+## Finding Gates
+
+Scans exit `0` after successful advisory analysis unless a gate is configured.
+
+```bash
+agentcsp scan . --fail-on high
+agentcsp scan . --fail-on high --fail-on-confidence high
+agentcsp scan . --fail-on-scan-health degraded
+agentcsp scan . --fail-on-diagnostics
+agentcsp scan . --fail-on-expired-suppressions
+```
+
+`--fail-on-confidence` requires `--fail-on`. Severity values are `critical`, `high`, `medium`, and `low`; confidence values are `very_high`, `high`, `medium`, and `low`.
+
+See [CI Integration](ci.md) and [Detection Quality](detection-quality.md) before using findings as a merge policy.
+
+## Rules
+
+```bash
+agentcsp rules list
+agentcsp rules list --ruleset extended --json
+agentcsp rules explain AGENTCSP-RUNTIME-001
+```
+
+`recommended` is the bounded default. `extended` provides the complete research catalog. Both are advisory in v0.2.
+
+## Policy Validation
+
+```bash
+agentcsp config validate agentcsp.yaml
+agentcsp config validate agentcsp.yaml --json
+```
+
+Validation does not run a scan. See [Policy](policy.md).
+
+## Baselines
+
+Create a reviewed baseline envelope:
+
+```bash
+agentcsp baseline create .agentcsp/findings.json --out agentcsp-baseline.json
+```
+
+Compare artifacts:
+
+```bash
+agentcsp baseline diff agentcsp-baseline.json .agentcsp/findings.json
+```
+
+Migrate a supported legacy findings array or manifest:
+
+```bash
+agentcsp baseline migrate legacy-findings.json --out agentcsp-baseline.json
+```
+
+Gate only new findings:
+
+```bash
+agentcsp scan . \
+  --baseline agentcsp-baseline.json \
+  --fail-on-new \
+  --fail-on high \
+  --fail-on-confidence high
+```
+
+## Doctor And Version
+
+```bash
+agentcsp doctor
+agentcsp doctor --json
+agentcsp version --json
+```
+
+`doctor` verifies the Node.js runtime and packaged recommended and extended rule catalogs. `version --json` reports scanner, manifest schema, object identity, finding identity, and Node.js versions.
+
+## Artifact Transactions
+
+AgentCSP writes a complete generation to a private staging directory, validates JSON, writes files with mode `0600`, creates a receipt, then atomically publishes the directory. The output directory uses mode `0700` where the platform supports POSIX permissions.
+
+Replacement is deliberately ownership-aware. AgentCSP replaces an existing output path only when it is empty or contains the ownership marker, a bounded valid receipt, the exact managed file set, and matching file sizes and SHA-256 digests. An unowned directory, unknown file, symlink, or modified artifact produces `AGENTCSP-E3006`; the existing output remains in place.
+
+A lock prevents concurrent writers to the same output path. If a process is interrupted, a later scan never treats an incomplete staged directory as a completed artifact set. Remove a stale lock only after confirming no AgentCSP process is writing that output.
+
+## Exit Codes
+
+| Code | Meaning |
+| ---: | --- |
+| `0` | Scan or lifecycle command completed successfully |
+| `1` | Configured finding gate failed |
+| `2` | Invalid configuration or input |
+| `3` | Scanner integrity, coverage, diagnostic, suppression, or packaged-artifact gate failed |
+| `4` | Unexpected internal failure |
+
+Machine-readable CLI errors include a stable code, problem, fix, and help URL.

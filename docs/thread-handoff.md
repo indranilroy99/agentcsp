@@ -96,14 +96,6 @@ Tagline: **Context Security Policy for AI Agents**
 
 Avoid names that sounded generic, crowded, or less enterprise-ready, including `TaintGuard`, `GuardPlane`, `TrustGraph`, `AgentGate`, and `ContextGate`.
 
-## Current Project Location
-
-```text
-/Users/indranil.roy/Documents/Codex/projects/agentcsp
-```
-
-The folder has been added to the Codex app Projects sidebar as an existing folder.
-
 ## Current Files
 
 - `README.md`

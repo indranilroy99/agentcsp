@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import { execFile } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -102,6 +102,12 @@ async function assertPublishMetadata(relativePackageJson, options = {}) {
   if (packageJson.engines?.node !== ">=20") {
     throw new Error(`${packageLabel} must declare Node.js >=20 runtime support`);
   }
+  if (options.directory && packageJson.publishConfig?.access !== "public") {
+    throw new Error(`${packageLabel} must publish with public access`);
+  }
+  if (options.directory && packageJson.publishConfig?.provenance !== true) {
+    throw new Error(`${packageLabel} must request npm provenance`);
+  }
   if (!Array.isArray(packageJson.keywords)) {
     throw new Error(`${packageLabel} must declare npm keywords`);
   }
@@ -192,7 +198,13 @@ async function verifyPackedPackageInstall(expectedRuleCount) {
       "package/dist/index.js",
       "package/dist/index.d.ts",
       "package/dist/banner.js",
-      "package/dist/commands/scan.js"
+      "package/dist/commands/baseline.js",
+      "package/dist/commands/config.js",
+      "package/dist/commands/doctor.js",
+      "package/dist/commands/rules.js",
+      "package/dist/commands/scan.js",
+      "package/dist/errors.js",
+      "package/dist/version.js"
     ]);
 
     await smokeTestInstalledCli(coreTarball, cliTarball, path.join(packRoot, "install"));
@@ -203,7 +215,7 @@ async function verifyPackedPackageInstall(expectedRuleCount) {
 
 async function packWorkspacePackage(packageName, destination) {
   await fs.mkdir(destination, { recursive: true });
-  await execFileAsync("pnpm", ["--filter", packageName, "pack", "--pack-destination", destination], {
+  await execFileAsync(packageManagerCommand(), ["--filter", packageName, "pack", "--pack-destination", destination], {
     cwd: repoRoot,
     maxBuffer: 10 * 1024 * 1024
   });
@@ -235,7 +247,8 @@ function assertTarballEntries(packageName, entries, expectedEntries) {
 
 async function smokeTestInstalledCli(coreTarball, cliTarball, installRoot) {
   await fs.mkdir(installRoot, { recursive: true });
-  const runtimeDependencies = await collectRuntimeDependencies();
+  const coreTarballUrl = pathToFileURL(coreTarball).href;
+  const cliTarballUrl = pathToFileURL(cliTarball).href;
   await fs.writeFile(
     path.join(installRoot, "package.json"),
     `${JSON.stringify(
@@ -244,22 +257,27 @@ async function smokeTestInstalledCli(coreTarball, cliTarball, installRoot) {
         version: "0.0.0",
         private: true,
         type: "module",
-        dependencies: runtimeDependencies
+        dependencies: {
+          "@agentcsp/core": coreTarballUrl,
+          agentcsp: cliTarballUrl
+        }
       },
       null,
       2
     )}\n`
   );
+  await fs.writeFile(
+    path.join(installRoot, "pnpm-workspace.yaml"),
+    `packages:\n  - .\noverrides:\n  "@agentcsp/core": "${coreTarballUrl}"\n`
+  );
 
-  await execFileAsync("pnpm", ["install", "--offline"], {
+  await execFileAsync(packageManagerCommand(), ["install", "--offline"], {
     cwd: installRoot,
     maxBuffer: 20 * 1024 * 1024
   });
 
   const installedCorePath = path.join(installRoot, "node_modules", "@agentcsp", "core");
   const installedCliPath = path.join(installRoot, "node_modules", "agentcsp");
-  await extractTarball(coreTarball, installedCorePath);
-  await extractTarball(cliTarball, installedCliPath);
 
   const outputPath = path.join(installRoot, "scan-output");
   await assertInstalledPackageMetadata(installedCorePath, installedCliPath);
@@ -269,8 +287,9 @@ async function smokeTestInstalledCli(coreTarball, cliTarball, installRoot) {
   await assertExecutableCliEntrypoint(installedCliEntrypoint, installedCliPath);
 
   await execFileAsync(
-    installedCliEntrypoint,
+    process.execPath,
     [
+      installedCliEntrypoint,
       "scan",
       path.join(repoRoot, "examples", "safe-agent"),
       "--out",
@@ -289,11 +308,13 @@ async function smokeTestInstalledCli(coreTarball, cliTarball, installRoot) {
   await assertFile(path.join(outputPath, "findings.json"));
   await assertFile(path.join(outputPath, "report.md"));
   await assertFile(path.join(outputPath, "agentcsp.sarif"));
+  await assertFile(path.join(outputPath, "receipt.json"));
 
   const manifest = JSON.parse(await fs.readFile(path.join(outputPath, "agent-manifest.json"), "utf8"));
   const findings = JSON.parse(await fs.readFile(path.join(outputPath, "findings.json"), "utf8"));
   const report = await fs.readFile(path.join(outputPath, "report.md"), "utf8");
   const sarif = JSON.parse(await fs.readFile(path.join(outputPath, "agentcsp.sarif"), "utf8"));
+  const receipt = JSON.parse(await fs.readFile(path.join(outputPath, "receipt.json"), "utf8"));
   if (!Array.isArray(findings)) {
     throw new Error("Installed CLI smoke test produced a non-array findings.json");
   }
@@ -301,16 +322,24 @@ async function smokeTestInstalledCli(coreTarball, cliTarball, installRoot) {
     throw new Error(`Installed CLI smoke test expected the safe fixture to stay clean, found ${findings.length}`);
   }
   assertInstalledSafeOperatorMetadata(manifest, report);
+  assertInstalledReceipt(receipt);
   if (!report.includes("- Root: `<scan-root>`")) {
     throw new Error("Installed CLI smoke test report did not redact the scan root");
   }
-  if (typeof manifest?.metadata?.root_path === "string" && report.includes(manifest.metadata.root_path)) {
+  if (
+    typeof manifest?.metadata?.root_path === "string" &&
+    path.isAbsolute(manifest.metadata.root_path) &&
+    report.includes(manifest.metadata.root_path)
+  ) {
     throw new Error("Installed CLI smoke test report leaked the absolute scan root");
   }
   assertInstalledSafeSarif(sarif, manifest);
 }
 
 function assertInstalledSafeOperatorMetadata(manifest, report) {
+  assertEqual(manifest.metadata?.config?.profile, "advisory", "installed CLI safe scan profile");
+  assertEqual(manifest.metadata?.config?.artifact_profile, "portable", "installed CLI safe artifact profile");
+  assertEqual(manifest.metadata?.config?.ruleset, "recommended", "installed CLI safe ruleset");
   assertArrayEqual(manifest.metadata?.config?.formats ?? [], ["json", "md", "sarif"], "installed CLI safe manifest formats");
   assertEqual(manifest.metadata?.config?.include_hidden, true, "installed CLI safe hidden scan setting");
   assertEqual(manifest.metadata?.config?.include_logs, false, "installed CLI safe log scan setting");
@@ -333,9 +362,9 @@ function assertInstalledSafeOperatorMetadata(manifest, report) {
   assertEqual(manifest.metadata?.config?.secret_values_collected, false, "installed CLI safe secret collection flag");
   assert(manifest.metadata?.fingerprint?.value?.match(/^[a-f0-9]{64}$/u), "installed CLI safe manifest fingerprint missing");
   assertEqual(manifest.metadata?.fingerprint?.algorithm, "sha256", "installed CLI safe manifest fingerprint algorithm");
-  assertEqual(manifest.metadata?.rule_pack?.built_in_rules, 383, "installed CLI safe built-in rule count");
+  assertEqual(manifest.metadata?.rule_pack?.built_in_rules, 17, "installed CLI safe built-in rule count");
   assertEqual(manifest.metadata?.rule_pack?.project_rules, 0, "installed CLI safe project rule count");
-  assertEqual(manifest.metadata?.rule_pack?.total_rules, 383, "installed CLI safe total rule count");
+  assertEqual(manifest.metadata?.rule_pack?.total_rules, 17, "installed CLI safe total rule count");
   assertEqual(manifest.metadata?.rule_pack?.project_rules_loaded, false, "installed CLI safe project rules loaded flag");
   assertEqual(manifest.metadata?.rule_pack?.rule_diagnostics, 0, "installed CLI safe rule diagnostic count");
   assert(manifest.metadata?.rule_pack?.fingerprint?.value?.match(/^[a-f0-9]{64}$/u), "installed CLI safe rule pack fingerprint missing");
@@ -381,6 +410,22 @@ function assertInstalledSafeOperatorMetadata(manifest, report) {
   assert(report.includes("- Attack path limit: 15"), "Installed CLI report missing attack path limit");
 }
 
+function assertInstalledReceipt(receipt) {
+  assertEqual(receipt?.schema_version, "0.1.0", "installed CLI receipt schema version");
+  assertEqual(receipt?.status, "complete", "installed CLI receipt status");
+  assertEqual(receipt?.artifact_profile, "portable", "installed CLI receipt artifact profile");
+  const names = (receipt?.files ?? []).map((item) => item.name).sort();
+  assertArrayEqual(
+    names,
+    ["agent-manifest.json", "agentcsp.sarif", "findings.json", "report.md"],
+    "installed CLI receipt file names"
+  );
+  for (const file of receipt?.files ?? []) {
+    assert(Number.isInteger(file.size_bytes) && file.size_bytes >= 0, `invalid receipt size for ${file.name}`);
+    assert(typeof file.sha256 === "string" && /^[a-f0-9]{64}$/u.test(file.sha256), `invalid receipt digest for ${file.name}`);
+  }
+}
+
 function assertInstalledSafeSarif(sarif, manifest) {
   assertEqual(sarif.version, "2.1.0", "installed CLI SARIF version");
   const run = sarif.runs?.[0];
@@ -417,30 +462,18 @@ async function assertExecutableCliEntrypoint(installedCliEntrypoint, installedCl
   }
 
   const stats = await fs.stat(installedCliEntrypoint);
-  if ((stats.mode & 0o111) === 0) {
+  if (process.platform !== "win32" && (stats.mode & 0o111) === 0) {
     throw new Error("Packed CLI entrypoint is not executable");
   }
 
   const cliPackageJson = JSON.parse(await fs.readFile(path.join(installedCliPath, "package.json"), "utf8"));
-  const { stdout } = await execFileAsync(installedCliEntrypoint, ["--version"], {
+  const { stdout } = await execFileAsync(process.execPath, [installedCliEntrypoint, "--version"], {
     cwd: path.dirname(installedCliPath),
     maxBuffer: 1024 * 1024
   });
   if (stdout.trim() !== cliPackageJson.version) {
     throw new Error(`Packed CLI --version mismatch: expected ${cliPackageJson.version}, received ${stdout.trim()}`);
   }
-}
-
-async function collectRuntimeDependencies() {
-  const dependencies = {};
-  for (const relativePackageJson of ["packages/core/package.json", "packages/cli/package.json"]) {
-    const packageJson = await readPackageJson(relativePackageJson);
-    for (const [name, version] of Object.entries(packageJson.dependencies ?? {})) {
-      if (name === "@agentcsp/core" || name === "agentcsp") continue;
-      dependencies[name] = version;
-    }
-  }
-  return Object.fromEntries(Object.entries(dependencies).sort(([left], [right]) => left.localeCompare(right)));
 }
 
 async function assertInstalledPackageMetadata(installedCorePath, installedCliPath) {
@@ -468,12 +501,8 @@ async function assertInstalledPackageMetadata(installedCorePath, installedCliPat
   }
 }
 
-async function extractTarball(tarballPath, destination) {
-  await fs.mkdir(destination, { recursive: true });
-  await execFileAsync("tar", ["-xzf", tarballPath, "-C", destination, "--strip-components", "1"], {
-    cwd: repoRoot,
-    maxBuffer: 10 * 1024 * 1024
-  });
+function packageManagerCommand() {
+  return process.platform === "win32" ? "pnpm.cmd" : "pnpm";
 }
 
 async function readPackageJson(relativePackageJson) {

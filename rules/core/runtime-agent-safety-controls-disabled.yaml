@@ -1,4 +1,8 @@
 id: AGENTCSP-RUNTIME-016
+maturity: stable
+disposition: advisory
+suppressibility: policy
+support_tier: structured
 name: Disabled agent safety controls expose privileged tools to untrusted context
 description: An agent safety or guardrail configuration disables prompt-injection filtering, output validation, tool-result sanitization, moderation, or redaction while untrusted context can reach privileged tools, credentials, and side effects without approval.
 category: agent_safety_control_bypass

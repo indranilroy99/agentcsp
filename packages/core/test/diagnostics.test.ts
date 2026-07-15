@@ -2,13 +2,14 @@ import { describe, expect, it, vi } from "vitest";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { scanProject } from "../src/scanner/scan.js";
+import { tempPath } from "./temp-path.js";
 
 describe("scan diagnostics", () => {
   it("emits redacted diagnostics for malformed security-relevant config files", async () => {
     const root = await createDiagnosticsFixture();
     const result = await scanProject({
       root_path: root,
-      output_path: "/private/tmp/agentcsp-diagnostics-output",
+      output_path: tempPath("agentcsp-diagnostics-output"),
       formats: ["json", "md", "sarif"],
       include_hidden: true,
       include_logs: false,
@@ -130,7 +131,7 @@ describe("scan diagnostics", () => {
     const root = await createDiagnosticsFixture();
     const result = await scanProject({
       root_path: root,
-      output_path: "/private/tmp/agentcsp-diagnostics-gate-output",
+      output_path: tempPath("agentcsp-diagnostics-gate-output"),
       formats: ["json", "md", "sarif"],
       include_hidden: true,
       include_logs: false,
@@ -168,7 +169,7 @@ describe("scan diagnostics", () => {
     const root = await createMaxFilesFixture();
     const result = await scanProject({
       root_path: root,
-      output_path: "/private/tmp/agentcsp-max-files-diagnostic-output",
+      output_path: tempPath("agentcsp-max-files-diagnostic-output"),
       formats: ["json", "md", "sarif"],
       include_hidden: true,
       include_logs: false,
@@ -234,11 +235,93 @@ describe("scan diagnostics", () => {
     });
   });
 
+  it("surfaces directory-count and per-directory entry exhaustion as incomplete scans", async () => {
+    const directoryRoot = await createDirectoryLimitFixture();
+    const directoryResult = await scanProject({
+      root_path: directoryRoot,
+      output_path: tempPath("agentcsp-max-directories-diagnostic-output"),
+      formats: ["json", "md", "sarif"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 100,
+      max_directories: 1,
+      max_entries_per_directory: 100,
+      quiet: true
+    });
+
+    expect(directoryResult.manifest.diagnostics).toEqual([
+      expect.objectContaining({
+        code: "SCAN_MAX_DIRECTORIES_REACHED",
+        parser: "scanner",
+        severity: "warning",
+        content_redacted: true
+      })
+    ]);
+    expect(directoryResult.manifest.scan_coverage).toMatchObject({
+      scan_health: "incomplete",
+      scan_health_reasons: ["diagnostic_warnings", "max_directories_reached"],
+      max_directories_reached: true,
+      max_directories: 1
+    });
+    expect(directoryResult.reportMarkdown).toContain("SCAN_MAX_DIRECTORIES_REACHED");
+
+    const entryRoot = await createDirectoryEntryLimitFixture();
+    const entryResult = await scanProject({
+      root_path: entryRoot,
+      output_path: tempPath("agentcsp-directory-entry-limit-diagnostic-output"),
+      formats: ["json", "md", "sarif"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 100,
+      max_directories: 100,
+      max_entries_per_directory: 2,
+      quiet: true
+    });
+
+    expect(entryResult.manifest.diagnostics).toEqual([
+      expect.objectContaining({
+        code: "SCAN_DIRECTORY_ENTRY_LIMIT_REACHED",
+        file_path: "dense",
+        parser: "scanner",
+        severity: "warning",
+        content_redacted: true
+      })
+    ]);
+    expect(entryResult.manifest.scan_coverage).toMatchObject({
+      scan_health: "incomplete",
+      scan_health_reasons: ["diagnostic_warnings", "directory_entry_limit_reached"],
+      directories_skipped_for_entry_limit: 1,
+      max_entries_per_directory: 2,
+      directory_entry_limit_paths: ["dense"]
+    });
+    expect(entryResult.reportMarkdown).toContain("SCAN_DIRECTORY_ENTRY_LIMIT_REACHED");
+    expect(entryResult.reportMarkdown).toContain("### Entry-Limited Directories");
+    expect(entryResult.reportMarkdown).toContain("| dense |");
+
+    const sarif = JSON.parse(await fs.readFile(entryResult.outputFiles.sarif!, "utf8")) as {
+      runs: Array<{
+        properties?: {
+          agentcsp_diagnostics?: Array<{ code?: string }>;
+          agentcsp_scan_coverage?: { directories_skipped_for_entry_limit?: number; scan_health?: string };
+        };
+      }>;
+    };
+    expect(sarif.runs[0]?.properties?.agentcsp_diagnostics).toEqual([
+      expect.objectContaining({ code: "SCAN_DIRECTORY_ENTRY_LIMIT_REACHED" })
+    ]);
+    expect(sarif.runs[0]?.properties?.agentcsp_scan_coverage).toMatchObject({
+      scan_health: "incomplete",
+      directories_skipped_for_entry_limit: 1
+    });
+  });
+
   it("emits bounded oversized file previews in scan coverage", async () => {
     const root = await createOversizedFilesFixture();
     const result = await scanProject({
       root_path: root,
-      output_path: "/private/tmp/agentcsp-oversized-files-output",
+      output_path: tempPath("agentcsp-oversized-files-output"),
       formats: ["json", "md", "sarif"],
       include_hidden: true,
       include_logs: false,
@@ -256,8 +339,8 @@ describe("scan diagnostics", () => {
       oversized_file_paths_truncated: false
     });
     expect(result.reportMarkdown).toContain("### Oversized Files");
-    expect(result.reportMarkdown).toContain("`large-a.md`");
-    expect(result.reportMarkdown).toContain("`nested/large-b.md`");
+    expect(result.reportMarkdown).toContain("| large-a.md |");
+    expect(result.reportMarkdown).toContain("| nested/large-b.md |");
     expect(result.reportMarkdown).not.toContain(root);
 
     const sarif = JSON.parse(await fs.readFile(result.outputFiles.sarif!, "utf8")) as {
@@ -290,7 +373,7 @@ describe("scan diagnostics", () => {
     try {
       const result = await scanProject({
         root_path: root,
-        output_path: "/private/tmp/agentcsp-traversal-diagnostic-output",
+        output_path: tempPath("agentcsp-traversal-diagnostic-output"),
         formats: ["json", "md", "sarif"],
         include_hidden: true,
         include_logs: false,
@@ -328,17 +411,17 @@ describe("scan diagnostics", () => {
 
   it("emits redacted scanner diagnostics when a non-root directory cannot be read", async () => {
     const root = await createDirectoryReadFailureFixture();
-    const originalReaddir = fs.readdir;
-    const readdirSpy = vi.spyOn(fs, "readdir").mockImplementation(async (target, options) => {
+    const originalOpendir = fs.opendir;
+    const opendirSpy = vi.spyOn(fs, "opendir").mockImplementation(async (target, options) => {
       if (String(target).endsWith("unreadable")) {
         throw Object.assign(new Error("simulated directory failure with sensitive details"), { code: "EACCES" });
       }
-      return originalReaddir(target, options as Parameters<typeof fs.readdir>[1]);
+      return originalOpendir(target, options);
     });
     try {
       const result = await scanProject({
         root_path: root,
-        output_path: "/private/tmp/agentcsp-directory-traversal-diagnostic-output",
+        output_path: tempPath("agentcsp-directory-traversal-diagnostic-output"),
         formats: ["json", "md", "sarif"],
         include_hidden: true,
         include_logs: false,
@@ -370,23 +453,23 @@ describe("scan diagnostics", () => {
         expect.objectContaining({ code: "SCAN_DIRECTORY_READ_FAILED", file_path: "unreadable" })
       ]);
     } finally {
-      readdirSpy.mockRestore();
+      opendirSpy.mockRestore();
     }
   });
 
   it("can fail CI when traversal diagnostics are configured as a gate", async () => {
     const root = await createDirectoryReadFailureFixture();
-    const originalReaddir = fs.readdir;
-    const readdirSpy = vi.spyOn(fs, "readdir").mockImplementation(async (target, options) => {
+    const originalOpendir = fs.opendir;
+    const opendirSpy = vi.spyOn(fs, "opendir").mockImplementation(async (target, options) => {
       if (String(target).endsWith("unreadable")) {
         throw Object.assign(new Error("simulated directory failure with sensitive details"), { code: "EACCES" });
       }
-      return originalReaddir(target, options as Parameters<typeof fs.readdir>[1]);
+      return originalOpendir(target, options);
     });
     try {
       const result = await scanProject({
         root_path: root,
-        output_path: "/private/tmp/agentcsp-directory-traversal-diagnostic-gate-output",
+        output_path: tempPath("agentcsp-directory-traversal-diagnostic-gate-output"),
         formats: ["json", "md", "sarif"],
         include_hidden: true,
         include_logs: false,
@@ -406,7 +489,7 @@ describe("scan diagnostics", () => {
       });
       expect(result.reportMarkdown).toContain("- Failed gates: diagnostics");
     } finally {
-      readdirSpy.mockRestore();
+      opendirSpy.mockRestore();
     }
   });
 
@@ -414,7 +497,7 @@ describe("scan diagnostics", () => {
     const root = await createMaxFilesFixture();
     const result = await scanProject({
       root_path: root,
-      output_path: "/private/tmp/agentcsp-max-files-diagnostic-gate-output",
+      output_path: tempPath("agentcsp-max-files-diagnostic-gate-output"),
       formats: ["json", "md", "sarif"],
       include_hidden: true,
       include_logs: false,
@@ -438,7 +521,7 @@ describe("scan diagnostics", () => {
     const root = await createInvalidPolicyFixture();
     const result = await scanProject({
       root_path: root,
-      output_path: "/private/tmp/agentcsp-invalid-policy-output",
+      output_path: tempPath("agentcsp-invalid-policy-output"),
       formats: ["json", "md", "sarif"],
       include_hidden: true,
       include_logs: false,
@@ -464,11 +547,11 @@ describe("scan diagnostics", () => {
 
   it("redacts external absolute policy config paths in diagnostics", async () => {
     const root = await createInvalidPolicyFixture();
-    const externalConfigPath = "/private/tmp/agentcsp-external-policy/private/team/agentcsp.yaml";
-    await fs.rm("/private/tmp/agentcsp-external-policy", { recursive: true, force: true });
+    const externalConfigPath = tempPath("agentcsp-external-policy/private/team/agentcsp.yaml");
+    await fs.rm(tempPath("agentcsp-external-policy"), { recursive: true, force: true });
     const result = await scanProject({
       root_path: root,
-      output_path: "/private/tmp/agentcsp-external-policy-diagnostic-output",
+      output_path: tempPath("agentcsp-external-policy-diagnostic-output"),
       config_path: externalConfigPath,
       formats: ["json", "md", "sarif"],
       include_hidden: true,
@@ -485,9 +568,9 @@ describe("scan diagnostics", () => {
         content_redacted: true
       })
     ]);
-    expect(JSON.stringify(result.manifest)).not.toContain("/private/tmp/agentcsp-external-policy");
-    expect(result.reportMarkdown).toContain("<external-policy-config>");
-    expect(result.reportMarkdown).not.toContain("/private/tmp/agentcsp-external-policy");
+    expect(JSON.stringify(result.manifest)).not.toContain(tempPath("agentcsp-external-policy"));
+    expect(result.reportMarkdown).toContain("&lt;external-policy-config&gt;");
+    expect(result.reportMarkdown).not.toContain(tempPath("agentcsp-external-policy"));
   });
 
   it("does not leak local package paths when built-in rules are missing", async () => {
@@ -507,7 +590,7 @@ describe("scan diagnostics", () => {
     try {
       const error = await scanProject({
         root_path: root,
-        output_path: "/private/tmp/agentcsp-missing-builtin-rules-output",
+        output_path: tempPath("agentcsp-missing-builtin-rules-output"),
         formats: ["json"],
         include_hidden: true,
         include_logs: false,
@@ -516,11 +599,9 @@ describe("scan diagnostics", () => {
         quiet: true
       }).catch((caught: unknown) => caught);
       const message = error instanceof Error ? error.message : String(error);
-      expect(message).toBe(
-        "No built-in rules directory with YAML rules found in 3 packaged AgentCSP rule locations. Reinstall AgentCSP or verify the package includes the built-in rules."
-      );
+      expect(message).toBe("No packaged built-in rules directory could be verified.");
       expect(message).not.toContain(process.cwd());
-      expect(message).not.toContain("/private/tmp");
+      expect(message).not.toContain(tempPath());
       expect(message).not.toContain("missing built-in rules at");
     } finally {
       statSpy.mockRestore();
@@ -529,7 +610,7 @@ describe("scan diagnostics", () => {
 });
 
 async function createDiagnosticsFixture(): Promise<string> {
-  const root = "/private/tmp/agentcsp-diagnostics-fixture";
+  const root = tempPath("agentcsp-diagnostics-fixture");
   await fs.rm(root, { recursive: true, force: true });
   await fs.mkdir(path.join(root, ".codex"), { recursive: true });
   await fs.mkdir(path.join(root, ".cursor", "rules"), { recursive: true });
@@ -571,7 +652,7 @@ async function createDiagnosticsFixture(): Promise<string> {
 }
 
 async function createInvalidPolicyFixture(): Promise<string> {
-  const root = "/private/tmp/agentcsp-invalid-policy-fixture";
+  const root = tempPath("agentcsp-invalid-policy-fixture");
   await fs.rm(root, { recursive: true, force: true });
   await fs.mkdir(root, { recursive: true });
   await fs.writeFile(path.join(root, "AGENTS.md"), "Review repository changes only.\n", "utf8");
@@ -593,7 +674,7 @@ async function createInvalidPolicyFixture(): Promise<string> {
 }
 
 async function createMaxFilesFixture(): Promise<string> {
-  const root = "/private/tmp/agentcsp-max-files-diagnostic-fixture";
+  const root = tempPath("agentcsp-max-files-diagnostic-fixture");
   await fs.rm(root, { recursive: true, force: true });
   await fs.mkdir(path.join(root, ".codex"), { recursive: true });
   await fs.writeFile(path.join(root, ".codex", "config.toml"), 'sandbox = "workspace-write"\n', "utf8");
@@ -602,8 +683,28 @@ async function createMaxFilesFixture(): Promise<string> {
   return root;
 }
 
+async function createDirectoryLimitFixture(): Promise<string> {
+  const root = tempPath("agentcsp-max-directories-diagnostic-fixture");
+  await fs.rm(root, { recursive: true, force: true });
+  await fs.mkdir(path.join(root, "a"), { recursive: true });
+  await fs.mkdir(path.join(root, "b"), { recursive: true });
+  await fs.writeFile(path.join(root, "AGENTS.md"), "Review repository changes only.\n", "utf8");
+  return root;
+}
+
+async function createDirectoryEntryLimitFixture(): Promise<string> {
+  const root = tempPath("agentcsp-directory-entry-limit-diagnostic-fixture");
+  await fs.rm(root, { recursive: true, force: true });
+  await fs.mkdir(path.join(root, "dense"), { recursive: true });
+  await Promise.all(
+    ["a.md", "b.md", "c.md"].map((name) => fs.writeFile(path.join(root, "dense", name), `${name}\n`, "utf8"))
+  );
+  await fs.writeFile(path.join(root, "AGENTS.md"), "Review repository changes only.\n", "utf8");
+  return root;
+}
+
 async function createOversizedFilesFixture(): Promise<string> {
-  const root = "/private/tmp/agentcsp-oversized-files-fixture";
+  const root = tempPath("agentcsp-oversized-files-fixture");
   await fs.rm(root, { recursive: true, force: true });
   await fs.mkdir(path.join(root, "nested"), { recursive: true });
   await fs.writeFile(path.join(root, "AGENTS.md"), "ok\n", "utf8");
@@ -613,7 +714,7 @@ async function createOversizedFilesFixture(): Promise<string> {
 }
 
 async function createTraversalFailureFixture(): Promise<string> {
-  const root = "/private/tmp/agentcsp-traversal-diagnostic-fixture";
+  const root = tempPath("agentcsp-traversal-diagnostic-fixture");
   await fs.rm(root, { recursive: true, force: true });
   await fs.mkdir(root, { recursive: true });
   await fs.writeFile(path.join(root, "AGENTS.md"), "Review repository changes only.\n", "utf8");
@@ -622,7 +723,7 @@ async function createTraversalFailureFixture(): Promise<string> {
 }
 
 async function createDirectoryReadFailureFixture(): Promise<string> {
-  const root = "/private/tmp/agentcsp-directory-traversal-diagnostic-fixture";
+  const root = tempPath("agentcsp-directory-traversal-diagnostic-fixture");
   await fs.rm(root, { recursive: true, force: true });
   await fs.mkdir(path.join(root, "unreadable"), { recursive: true });
   await fs.writeFile(path.join(root, "AGENTS.md"), "Review repository changes only.\n", "utf8");

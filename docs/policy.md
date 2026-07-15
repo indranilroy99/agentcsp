@@ -41,7 +41,7 @@ Recommended controls let a team strengthen or change a finding recommendation wi
 
 They are advisory in v1. When a policy control matches, AgentCSP updates `recommended_control` and records a `policy_control` object with the previous control, reason, match fields, match scope, change direction, and application time.
 
-JSON findings retain the full policy-control reason for internal audit workflows. Markdown and SARIF redact the reason by default, while preserving whether the control was strengthened, weakened, or unchanged, how narrowly the policy matched, and which match fields were used.
+Internal-profile JSON findings retain the full policy-control reason for protected audit workflows. Portable JSON, Markdown, and SARIF redact the reason by default while preserving whether the control was strengthened, weakened, or unchanged, how narrowly the policy matched, and which match fields were used.
 
 Example:
 
@@ -75,7 +75,7 @@ Dotted fields are also supported for exact matches against finding fields, such 
 
 Suppressions are explicit accepted-risk records. They do not delete findings from JSON, Markdown, or SARIF output. Active suppressions are excluded from `--fail-on` gates, while expired suppressions remain active risk. Use `--fail-on-expired-suppressions` when CI should block stale waivers even when no severity threshold is configured.
 
-JSON findings retain suppression ownership, reason, expiry, matched fields, and deterministic match scope for audit workflows. Markdown and SARIF reports redact suppression IDs, owners, and reasons by default, while preserving suppression status, expiry, match scope, and matched-field context for shared CI artifacts.
+Internal-profile JSON findings retain suppression ownership, reason, expiry, matched fields, and deterministic match scope for protected audit workflows. Portable JSON, Markdown, and SARIF redact ownership and reasons by default while preserving suppression status, expiry, match scope, and matched-field context for shared CI artifacts.
 
 Suppression match scope is derived from the fields that matched a finding:
 

@@ -1,80 +1,38 @@
 # Rules
 
-AgentCSP rules are constrained YAML files. They are designed to be reviewable, portable, and safe for open rule packs.
+AgentCSP rules are constrained YAML documents evaluated against normalized manifest objects. Rules are data, not plugins: they cannot execute JavaScript, shell commands, templates, or network requests.
 
-MVP rules operate on normalized manifest objects. They do not execute JavaScript or arbitrary code.
+## Packs
 
-## Rule Loading
+| Pack | Selection | Purpose | Status |
+| --- | --- | --- | --- |
+| Recommended | `--ruleset recommended` | Bounded first-run detections for structured, high-impact agent authority failures | Advisory |
+| Extended | `--ruleset extended` | Broad research, hunting, fixture, and rule-development coverage | Advisory |
 
-AgentCSP always runs the built-in rule pack that ships with the scanner. When the scanned repository contains a project-local `rules/` directory, those rules are loaded additively after the built-in pack.
+The CLI defaults to `recommended`. The pack manifest is [`rules/packs/recommended.json`](../rules/packs/recommended.json).
 
-Malformed project-local rules, schema-invalid rules, and duplicate rule IDs are emitted as redacted diagnostics and skipped. They do not replace or disable built-in rules.
+```bash
+agentcsp rules list
+agentcsp rules list --ruleset extended
+agentcsp rules explain AGENTCSP-RUNTIME-001
+```
 
-Package builds copy the built-in rule pack into `@agentcsp/core` under `dist/builtin-rules`, and the package allowlist includes that compiled distribution. Installed CLI builds should therefore load the same built-in rules without relying on repository-relative paths.
+No v0.2 rule is eligible for automatic blocking. See [Detection Quality](detection-quality.md).
 
-Maintainers should run `pnpm verify:rules` before changing the built-in rule pack. The verifier rejects duplicate catalog IDs, schema-invalid YAML, empty match conditions, missing OWASP/MITRE ATLAS/NIST mappings, malformed operator values, and recommendations that are too thin to support security review.
+## Loading And Trust
 
-The preferred rule style is correlated and evidence-backed. For example, a high-confidence rule should combine multiple signals such as remote MCP plus credential-backed access, remote MCP plus plaintext transport plus credential-backed access, local MCP implementation paths missing from scan plus credentials and side effects, MCP prompt or resource context plus untrusted input, tool/external directives, privileged server authority, and credential-backed MCP access, remote credential-backed MCP server plus broad client roots, sampling or elicitation authority, and sensitive client-context exposure, MCP OAuth authorization plus remote dynamic client registration, device-code exposure to agent context, wildcard or user-selected redirect callbacks, disabled redirect validation, disabled PKCE/state/resource indicators, broad scopes, refresh-token storage, token forwarding, untrusted server selection, credential exposure, and no approval gate, package-runner MCP launchers plus unpinned versions and credentials, agent package manifests plus risky agent dependency references, credentialed lifecycle scripts, and external dependency reach, agent deployment manifests plus mutable remote images, privileged runtime, host mounts, credentials, and no approval gate, runtime allowlists plus secret-backed MCP servers plus approval bypass, auto-approved destructive MCP tools plus credential-backed servers, auto-approved privileged runtime permissions plus secret env exposure, auto-approved runtime package scripts plus release authority, AgentCSP policy files plus broad high-severity suppressions, permissive recommended-control downgrades, and trust elevation for untrusted context, public agent cards plus anonymous external callers, privileged browser/database/memory/secret authority, missing approval, and missing rate limits, remote agent federation plus dynamic discovery, untrusted agent selection, sensitive context and credential forwarding, disabled identity verification, missing allowlists, and no approval, remote prompt registries plus auto-synced unpinned system or developer prompts, disabled verification, untrusted selectors, privileged tool directives, and no approval gate, authenticated browser sessions plus broad origins plus untrusted navigation plus click/form authority, authenticated browser sessions plus remote debugging and cookie/storage profile references, browser extension/profile exposure plus password-manager/autofill state plus untrusted navigation authority, inbound email/chat/ticket/webhook payloads plus agent invocation plus tool/write authority plus credentials plus no approval, multi-agent delegation plus untrusted input plus shared memory plus privileged specialist tools plus credentials plus no approval, live eval harnesses plus adversarial prompts plus production agents plus privileged tools plus credentials plus no approval, disabled agent safety controls plus untrusted input plus privileged tools plus credentials plus no approval, SaaS connectors plus broad write scopes plus credentials plus untrusted input without approval, secret managers plus read/list scope plus tool injection plus untrusted input without approval, agent identity delegation plus credential issuance plus service-account impersonation plus broad scopes plus untrusted subject inputs without approval, cloud control-plane configs plus broad admin/write scope, IAM authority, secret access, compute/storage mutation, untrusted input, credential exposure, and no approval gate, remote extension loaders plus auto-install plus unpinned unsigned capabilities plus untrusted selector inputs plus privileged authority without approval, agent self-modification plus untrusted inputs plus auto-applied writes to instructions, policy, runtime config, and tool definitions without approval, model-mediated approval gates plus untrusted approval context plus default-allow behavior plus auto-executed privileged actions without a required human reviewer, context composers plus untrusted retrieval/tool/browser/memory context promoted into system or developer roles plus disabled sanitization and privileged tool authority, tool-output policies plus raw browser/shell/MCP/API/customer observations injected into model context, disabled sanitization and prompt-injection filtering, privileged follow-up tool authority, credential exposure, and no approval, visual context policies plus raw screenshots/uploaded images/OCR text injected into model context, disabled visual sanitization and prompt-injection filtering, privileged follow-up tool authority, credential exposure, and no approval, remote/shared memory stores plus untrusted writes plus tool-output, prompt, retrieval, and secret capture plus replay into future agent context plus no approval, artifact/output export plus public remote destination plus prompt, tool-output, browser, retrieval, memory, PII, or secret capture plus disabled redaction, webhook/callback egress plus model-generated or untrusted payloads, sensitive context, disabled redaction, credential reference, and no approval gate, privileged agent container plus Docker socket, host-root mount, host networking, credentials, untrusted input, and no approval gate, code interpreter runtime plus model-generated code execution, network/package-install authority, filesystem or credential mounts, untrusted input, output persistence, and no approval gate, AI training dataset export plus model-update authority, remote upload, prompt/tool/retrieval/memory/PII/secret capture, disabled redaction, untrusted inputs, credential reference, and no approval gate, LLM prompt cache plus shared remote storage, prompt/completion/tool/retrieval/memory/PII/secret capture, disabled redaction, replay into future calls, untrusted inputs, credential reference, and no approval gate, AI model router plus automatic third-party fallback, sensitive context forwarding, disabled redaction, untrusted input, credential reference, and no approval gate, AI embedding pipeline plus third-party embedding, vector writes, sensitive capture, disabled redaction, untrusted input, credential reference, and no approval gate, AI model endpoint plaintext transport plus sensitive context plus credential reference, AI telemetry remote export plus sensitive capture plus disabled redaction, workflow automation plus agent package scripts plus secrets and write authority, workflow event payloads plus agent package scripts plus secrets and write authority, instruction files plus untrusted context plus tool and memory bridges, broad always-applied Cursor rules plus untrusted-to-privileged context bridges, remote vector-store connectors plus credentials plus untrusted write/sync ingestion, RAG ingestion pipelines plus auto-indexed user uploads, ticket attachments, public web pages, or messages into trusted namespaces, disabled quarantine/moderation/instruction stripping/sanitization, missing provenance, credentials, and no approval, RAG retrieval authorization plus user-controlled queries and filters, broad sensitive scope, disabled ACL/provenance/trust filters, raw chunk or prompt-injection passthrough, tool-context injection, credentials, and no approval, tool-name collision plus authority mismatch, skill context inputs plus external output, prompt template variables plus explicit privileged-tool references, prompt template variables plus system/developer role-boundary injection, persisted memory plus explicit privileged-tool references, prompt template variables plus memory persistence, prompt template variables plus tool/external directives, scheduled automation plus secrets and write authority, RAG content plus instruction-like tool directives, retrieved content plus sensitive-context and external-egress directives, generated state plus instruction-like tool replay, model-visible tool descriptions plus instruction override plus external/write authority, external write plus credential-like tool input, external write plus prompt-like content input and URL destination, local path input plus URL-like destination plus external write capability, open-world schema plus privileged tool authority, read-only hint conflicts plus side-effect signals, destructive action plus path-like input, unsandboxed runtime plus approval bypass, shell execution, write permissions, untrusted provenance, or irreversible side effects.
+Built-in rules ship inside `@agentcsp/core`. In the advisory profile, a repository may add rules under `rules/`; project rules are additive and cannot replace a built-in rule ID.
 
-For authorization-broker rules, require concrete grant-risk correlation such as dynamic grants, model-selected scope, untrusted subject or resource inputs, broad tool/resource scope, privileged authority, default-allow or fail-open posture, credential evidence, and missing approval.
+Project rules are always normalized to:
 
-For OpenAPI and Swagger tool-import rules, require concrete agent-authority correlation such as agent import, authenticated external operation, write or destructive method, prompt-like or freeform request content, user-controlled request inputs, sensitive data categories, and missing approval. Do not match on raw API text alone.
+- `origin: project`
+- `maturity: experimental`
+- `disposition: advisory`
+- `suppressibility: policy`
 
-For source-defined tool handler rules, require concrete handler-authority correlation such as parsed MCP SDK or agent-framework tool registration, redacted handler-body analysis, environment-backed secret access, secret-manager or vault reads from caller-selected paths, caller-controlled secret paths passed into vault APIs, secret-manager output published through external-service SDKs with runtime credentials, secret-manager output forwarded into model-provider prompts with runtime credentials, secret-manager output persisted into durable memory, RAG, vector, or state stores with runtime credentials, secret-manager output written into customer or operational databases using database authority, secret-manager output sent through embedding providers and persisted as durable vector memory with runtime credentials, secret-manager output exported into training, fine-tuning, eval, or model-improvement datasets with runtime credentials, secret-manager output promoted through feedback, RLHF, eval, reward-model, or model-improvement pipelines with runtime credentials, secret-manager output exported into public or shareable artifact/output storage with runtime credentials, secret-manager output exported into telemetry, tracing, logging, or observability systems with runtime credentials, secret-manager output written into prompt, LLM, response, or semantic caches with runtime credentials and caller-controlled cache keys, secret-manager output published into prompt or instruction registries with runtime credentials and caller-selected prompt IDs, roles, namespaces, versions, or environments, secret-manager output enqueued into background-agent or task queues with runtime credentials and caller-selected routing, secret-manager output delegated to remote agents or A2A peers with runtime credentials and caller-selected targets, secret-manager output injected into authenticated browser automation with caller-selected targets or selectors, secret-manager output used to update or weaken guardrail, approval, moderation, or safety policy with runtime credentials and caller-selected policy targets or modes, secret-manager output used to write broad, wildcard, approval-free, or long-lived authorization, permission, entitlement, or tool-grant policy with runtime credentials, secret-manager output used to mint, sign, assume, impersonate, or issue agent credentials with runtime broker credentials, credentialed network reads to user-controlled URLs, caller-selected URLs or endpoints passed into HTTP client destinations, network response capture from caller-controlled URLs into model-visible output, model-provider SDK calls that forward caller or customer context into LLM providers and return model-visible output, caller-selected model, deployment, provider, endpoint, or base URL arguments passed into model-provider SDK calls, nested tool outputs or raw tool observations returned into model-visible output, nested tool outputs or raw tool observations forwarded into model-provider prompts with runtime credentials, raw tool observations persisted into durable memory, RAG, or state stores with runtime credentials, raw tool observations written into prompt, LLM, response, or semantic caches with runtime credentials and caller-controlled cache keys, raw tool observations embedded by embedding providers and persisted into durable vector memory, RAG, or state stores with runtime credentials, raw tool observations written into customer or operational databases using database authority, raw tool observations exported into telemetry, tracing, logging, or observability systems with runtime credentials, raw tool observations exported into public or shareable artifact/output storage with runtime credentials, raw tool observations exported into training, fine-tuning, eval, or model-improvement datasets with runtime credentials, raw tool observations enqueued into asynchronous background-agent jobs with runtime credentials, raw tool observations delegated to remote agents or A2A peers with runtime credentials, raw tool observations injected into authenticated browser automation with caller-selected targets or selectors, raw tool observations used to update or weaken guardrail, approval, moderation, or safety policy with runtime credentials and caller-selected policy targets or modes, raw tool observations published through Slack, email, issue-tracker, chat, or SaaS SDKs with runtime credentials, raw tool observations published into prompt or instruction registries with runtime credentials and caller-selected prompt IDs, roles, namespaces, or environments, raw tool observations used to write broad, wildcard, approval-free, or long-lived authorization, permission, entitlement, or tool-grant policy with runtime credentials, raw tool observations used to mint, sign, assume, impersonate, or issue agent credentials with runtime broker credentials, embedding-provider SDK calls that send caller, customer, tool-output, or secret-manager-derived text into embeddings and persist vectors into memory/RAG/state stores, telemetry/tracing/observability SDK exports that send caller, customer, prompt, or tool-output payloads with runtime credentials, prompt/LLM/semantic cache writes that store caller-controlled cache keys and prompt, customer, or tool-output values with runtime credentials, AI training or fine-tuning dataset exports that write caller, customer, prompt, completion, or tool-output payloads with runtime credentials, feedback/RLHF pipeline writes that record caller/customer feedback, prompts, completions, tool traces, retrieval, or memory context and auto-promote it into caller-selected training, eval, reward-model, or model-update paths with runtime credentials, guardrail, approval, moderation, or safety-policy writes that combine caller-controlled policy content, caller-selected control IDs or modes, and explicit weakening such as default-allow, disabled enforcement, or approval-off posture with runtime credentials, authorization, permission, entitlement, or tool-grant writes that combine caller-controlled tools, scopes, roles, resources, tenants, subjects, or reasons with wildcard, broad, approval-free, or long-lived grant posture using runtime credentials, public or shareable artifact/output exports that write caller, customer, report, generated-output, or tool-output payloads to storage with runtime credentials, RAG or vector retrieval tools that pass caller-selected query, namespace, tenant, collection, or filter inputs into retrievers and return raw chunks into model-visible output with runtime credentials, RAG or vector retrieval tools that forward raw retrieved chunks into model-provider prompts with runtime credentials, RAG or vector retrieval tools that publish raw retrieved chunks through external-service SDKs with runtime credentials and caller-selected recipients, RAG or vector retrieval tools that inject raw retrieved chunks into authenticated browser automation with runtime credentials and caller-selected targets, RAG or vector retrieval tools that persist raw retrieved chunks into durable memory, RAG, or state stores with runtime credentials and caller-selected memory scope, background task or agent-queue enqueues that pass caller/customer payloads and caller-selected queue, topic, route, worker, or tenant fields into async jobs with runtime credentials, prompt-registry or instruction-registry writes that publish caller/customer prompt content with caller-selected prompt IDs, roles, namespaces, versions, or environments using runtime credentials, model-mediated approval gates that send caller/customer/tool-output context into an approval model and automatically execute privileged actions from the approval result, authenticated browser or screen screenshot/OCR capture returned into model-visible output from caller-selected targets, authenticated visual context forwarded into model-provider prompts with runtime credentials and caller-selected targets, remote-agent or A2A delegation calls that forward caller/customer context to caller-selected agents with runtime credentials, privileged prompt composition that places caller or customer content into system/developer model roles, external service SDK writes to Slack/GitHub/email/chat/issue/SaaS clients from caller or customer content, caller-selected external-service recipients or channels passed into SDK writes, customer or prompt-like content persistence into memory, vector, RAG, or state stores, caller-selected memory namespaces, tenants, collections, or keys passed into durable memory writes, caller content writes to persistent agent control-plane files, credential issuance or service-account impersonation from caller-selected subject, scope, role, or audience inputs, caller-selected credential grant inputs passed into identity broker APIs, nested tool invocation from caller-selected tool names or argument bodies, browser automation from caller-selected URLs, selectors, or form payloads, caller-selected browser targets passed into page or driver calls, secret-to-output materialization, arbitrary local file disclosure to model-visible output, caller-controlled paths passed into filesystem APIs, external write, database query/write execution, caller-controlled SQL or query text passed into database APIs, filesystem mutation, shell execution with caller-controlled command arguments, dynamic in-process code execution with caller-controlled code arguments, unsafe deserialization of caller-controlled serialized inputs, code-like/path-like/serialized or user-controlled content/PII/customer inputs, and no raw handler source in evidence. Do not flag a source tool merely because a handler mentions a network library, environment lookup, model-provider SDK, approval SDK, approval model, approval gate, safety-policy SDK, guardrail SDK, moderation SDK, authorization SDK, permission broker, entitlement client, RBAC client, grant broker, embedding SDK, telemetry or tracing SDK, prompt-cache, Redis, semantic-cache, cache SDK, training-dataset SDK, fine-tuning SDK, dataset client, feedback SDK, RLHF client, reward-model client, artifact/export/storage SDK, retriever, vector-store, RAG library, search client, task queue, job queue, event bus, scheduler, prompt registry, instruction registry, prompt-store SDK, browser screenshot API, OCR library, agent client, A2A SDK, federation SDK, secret-manager library, memory library, database library, identity library, tool library, browser library, filesystem import, shell library, external-service SDK, dynamic-code API, or deserialization library in isolation.
+The `ci-strict` profile ignores repository rules entirely. Malformed, duplicate, or schema-invalid rules produce redacted diagnostics.
 
-For MCP environment-exposure rules, require concrete ambient-secret correlation such as broad process-environment passthrough, wildcard or sensitive env patterns, external or third-party MCP reach, credential evidence, and side-effecting agent-callable authority. Do not flag explicit least-privilege env allowlists merely because they name a single credential key.
-
-For MCP tool-catalog trust rules, require concrete mutable-tool-supply correlation such as a remote MCP server, dynamic refresh, model-visible tool descriptions, remote schema trust, disabled pinning, disabled signature or provenance verification, unreviewed tools, privileged tool categories, credential evidence, and missing approval. Do not flag pinned static manifests that keep remote descriptions untrusted, require review, and expose only read-only tools.
-
-For MCP resource-subscription rules, require concrete live-context correlation such as a remote credential-backed MCP server, dynamic resource watches or server-pushed updates, auto-inclusion into model-visible context, untrusted or sensitive subscribed sources, raw-content passthrough, disabled sanitization/redaction/prompt-injection filtering, privileged follow-up tool authority, and missing approval. Do not flag pinned, reviewed, non-model-visible resource subscriptions that stay read-only and require approval.
-
-For hosted assistant definition rules, require concrete deployment-risk correlation such as hosted assistant detection, untrusted thread or customer inputs, sensitive file or vector resources, automatic tool choice, parallel privileged tool fanout, privileged hosted tools, disabled guardrails, credential evidence, and missing approval.
-
-For public agent chat ingress rules, require concrete public prompt-to-tool correlation such as a public or anonymous web/chat endpoint, disabled authentication, broad CORS or missing CSRF/rate-limit/abuse controls, untrusted messages or uploads, automatic tool invocation, privileged database, external-response, memory, or secret-manager authority, disabled redaction, credential evidence, and missing approval. Do not flag authenticated internal read-only chats that require approval, keep auto tool invocation disabled, and expose no credentials.
-
-For agent debug console and playground rules, require concrete diagnostic control-plane exposure such as public or anonymous debug access, disabled authentication, prompt/raw-context/trace/memory/tool-schema visibility, live tool invocation or prompt editing, privileged database, external-response, memory, or secret-manager authority, disabled redaction, disabled audit logging, credential evidence, and missing approval. Do not flag SSO-protected internal inspectors that only expose redacted read-only prompt summaries or tool schemas, keep live tool invocation disabled, and require approval.
-
-For response-stream disclosure rules, require concrete client-visible internal-context correlation such as a public or anonymous response stream, disabled authentication, streaming enabled, reasoning or scratchpad visibility, raw tool outputs or tool arguments, retrieval chunks, memory context, system or developer prompts, secret-bearing output, disabled redaction, credential evidence, and missing approval. Do not flag internal event streams that keep model internals redacted and expose only approved status fields.
-
-For model-output action-router rules, require concrete untrusted-output-to-authority correlation such as model or assistant output parsed as actions, untrusted input sources, disabled or open schema validation, unknown actions allowed, lenient JSON repair, batch execution, automatic dispatch, privileged write/shell/memory/secret/external-response authority, disabled redaction or dry-run controls, and missing approval. Do not flag scoped structured tool-call routers that use closed schemas, deny unknown actions, keep auto-execution disabled, and require approval.
-
-For realtime and voice agent session rules, require concrete caller-to-tool correlation such as external caller or audio input, transcript or recording capture, disabled prompt-injection filtering or transcript sanitization, privileged function, MCP, database, messaging, memory, or secret-manager authority, sensitive or PII context, credential evidence, and missing approval.
-
-For agent safety and guardrail posture rules, require concrete fail-open, disabled-control, or model-only enforcement correlation such as default-allow, timeout-allow, error-allow, monitor-only, disabled moderation/validation/redaction controls, or prompt-only/LLM-judge/self-review enforcement with missing deterministic pre-tool policy, plus untrusted input, privileged tool authority, credential evidence, and missing approval. Do not flag deterministic pre-tool guardrails merely because they mention disabled model reviewers or post-hoc review fields set to false.
-
-For secret-manager prompt-materialization rules, require concrete secret-to-model-context correlation such as read/list scope, broad or sensitive secret scope, raw secret values injected or materialized into system, developer, model, memory, retrieval, or tool context, untrusted selector or prompt sources, disabled secret redaction, credential evidence, and missing approval. Do not flag scoped alias-only secret brokers that keep raw values out of prompts, keep redaction enabled, reject untrusted selectors, and require approval.
-
-For feedback and RLHF pipeline rules, require concrete feedback-to-model correlation such as untrusted ratings, reviewer notes, prompts, completions, tool traces, retrieval, memory, PII, or secrets captured into remote feedback stores, training datasets, eval sets, or model-update paths with redaction, consent, or approval controls disabled.
-
-For LLM prompt, response, and semantic-cache rules, require concrete cache-replay correlation such as remote or shared cache storage, semantic reuse, user-controlled cache-key material, broad match thresholds, cross-tenant replay or disabled tenant isolation, sensitive capture, disabled redaction, credential evidence, and missing approval. Do not flag local exact-match caches merely because they store tenant-scoped hashes.
-
-For background agent task-queue rules, require concrete async-to-tool correlation such as background consumers, automatic execution, untrusted job payloads, prompt or tool-output passthrough, retry or dead-letter replay, privileged tool authority, credential exposure, and missing approval. Do not flag local approval-gated queues merely because they contain internal review jobs.
-
-For autonomous agent loop and planner-executor rules, require concrete goal-to-tool correlation such as autonomous mode, automatic execution, untrusted goal or customer-ticket sources, privileged browser/database/messaging/shell/secret-manager authority, tool-output feedback into planning, unbounded or excessive iteration posture, missing runtime budget or stop conditions, disabled kill switch or dry-run posture, credential evidence, and missing approval. Do not flag bounded read-only review loops that disable autonomous execution, enforce low iteration budgets, keep tool-output feedback out of future planning, and require approval.
-
-For AI telemetry and trace-sharing rules, require concrete trace-exposure correlation such as remote export, sensitive prompt/completion/tool-output/retrieval/memory capture, public or broadly shared trace access, disabled RBAC/SSO or equivalent access controls, disabled redaction, credential evidence, and missing approval. Do not flag local telemetry configs that keep export disabled, redaction enabled, and approval/RBAC enabled.
-
-For memory-store access-boundary and retention rules, require concrete durable-memory correlation such as persistent and shared memory, public or cross-tenant access, disabled access control or tenant isolation, untrusted writes, sensitive or secret-bearing context, long or unbounded retention, disabled redaction, and missing approval. Do not flag local private session memory merely because it is stored under a memory directory or has explicit disabled capture fields.
-
-For browser file-transfer rules, require concrete file-transfer correlation such as authenticated browser state, untrusted navigation, broad origins, upload/download authority, redacted local transfer paths, sensitive or PII context, credential evidence, and missing approval. Do not flag local unauthenticated read-only browser configs merely because upload, download, cookie, or remote-debugging keys are explicitly set to false.
-
-For agent web and network egress rules, require concrete SSRF-style correlation such as web/browser/fetch tool authority, untrusted or model-selected URL sources, private-network or cloud-metadata destination categories, credential or header forwarding, disabled DNS-rebinding or redirect protections, and missing approval. Do not flag approval-gated public documentation fetch policies merely because they allow outbound HTTPS.
-
-For computer-use and desktop automation rules, require concrete host-control correlation such as signed-in desktop state, screen or OCR capture, keyboard/mouse control, clipboard or file-transfer authority, credential-store exposure, untrusted instructions, disabled redaction, credential evidence, and missing approval. Do not flag local read-only review configs merely because they contain disabled desktop, screen, clipboard, upload, download, or credential-store fields.
-
-For context-window and compaction rules, require concrete instruction-integrity correlation such as enabled truncation or overflow handling, low token budgets at or below 8,192 tokens, untrusted/tool/memory priority, system or developer instruction eviction, safety-policy eviction, unverified summaries, privileged tool authority, credential evidence, and missing approval. Do not flag bounded token budgets or pinned-system-first compaction policies merely because they mention truncation.
-
-For context-composer secret-materialization rules, require concrete prompt-assembly correlation such as untrusted sources, credential-bearing environment references, materialization into system, developer, prompt, or model context, disabled env redaction, credential evidence, and missing approval. Do not flag configs that explicitly disable env materialization or only mention redaction controls.
-
-For remote instruction-loader rules, require concrete instruction-authority correlation such as remote fetch or sync, automatic refresh, unpinned instruction references, disabled signature or provenance verification, untrusted selectors, system or developer role loading, privileged tool authority, credential evidence, and missing approval. Do not flag local pinned instruction bundles that verify provenance, reject untrusted selectors, and require approval.
-
-For reasoning-state and scratchpad rules, require concrete state-replay correlation such as sensitive reasoning, plan, prompt, tool-observation, retrieval, memory, PII, or secret capture into a persistent remote or shared store, replay into planner or future model context, disabled redaction or access controls, credential evidence, and missing approval. Do not flag local ephemeral scratchpads that keep capture and replay disabled.
-
-For workspace-context sync rules, require concrete local-file exposure correlation such as automatic workspace ingestion, sensitive source categories such as env files, SSH keys, cloud credentials, kubeconfig, git history, home directories, or private repositories, remote or model/RAG/memory sinks, untrusted selectors, disabled redaction or ignored `.agentcspignore`, credential evidence, and missing approval. Do not flag scoped local context loaders that only read explicit low-risk folders with secrets and ignored paths excluded.
-
-For agent tool retry and replay rules, require concrete duplicate-execution correlation such as automatic retry or replay, untrusted context, privileged non-idempotent action authority, disabled idempotency or duplicate suppression, credential evidence, and missing approval. Do not flag approval-gated read-only retry budgets merely because they mention retry, backoff, or idempotency.
-
-AgentCSP computes finding confidence from rule correlation depth, scoped object type, structured parsing, privileged actions, data class, external reach, and side-effect signals.
+## Schema
 
 Required fields:
 
@@ -87,20 +45,113 @@ Required fields:
 - `match`
 - `recommendation`
 
-Example:
+Optional evidence-governance fields:
+
+- `maturity`: `calibrated`, `stable`, or `experimental`
+- `disposition`: reserved schema field; v0.2 normalizes detections to `advisory`
+- `suppressibility`: `never`, `trusted_policy_only`, or `policy`
+- `support_tier`: `typed_path`, `structured`, or `heuristic`
+
+Supported surface types:
+
+```text
+agent instruction skill plugin mcp_server tool prompt rag_source memory
+secret runtime_config ci_cd automation
+```
+
+Supported operators:
+
+| Operator | Behavior |
+| --- | --- |
+| `equals`, `not_equals` | Exact scalar comparison |
+| `includes` | Array contains one exact value |
+| `contains_any` | Array contains any supplied exact value |
+| `exists` | Field is present and non-null |
+| `in` | Actual scalar is present in a supplied array |
+| `gt`, `gte`, `lt`, `lte` | Numeric comparison |
+
+All conditions in `match.where` must pass. Empty condition arrays are rejected by the rule verifier.
+
+## Example
 
 ```yaml
-id: AGENTCSP-TOOL-001
-name: Package script exposes shell authority
-category: unsafe_code_execution
-severity: medium
+id: AGENTCSP-TOOL-004
+maturity: stable
+disposition: advisory
+suppressibility: policy
+support_tier: structured
+name: Tool schema exposes destructive filesystem authority
+description: >-
+  An agent-callable tool accepts a filesystem path and exposes a destructive
+  operation, creating irreversible local authority.
+category: tool_schema_authority
+severity: critical
+maps_to:
+  owasp:
+    - "LLM06:2025 Excessive Agency"
+  mitre_atlas:
+    - "AML.T0051 LLM Plugin Compromise"
+  nist_ai_rmf:
+    - "MANAGE 2.4"
 match:
   object_type: tool
   where:
-    - field: actions
-      op: includes
-      value: execute
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.accepts_path_input
+      op: equals
+      value: true
+    - field: reversible
+      op: equals
+      value: false
 recommendation:
   control: require_approval
-  text: Require approval before agent-triggered shell execution.
+  text: Require approval and constrain destructive filesystem operations to an allowlisted workspace root.
 ```
+
+## Quality Requirements
+
+A recommended rule should correlate multiple independent facts. A keyword, filename, SDK import, environment lookup, or single disabled flag is not enough for a high-severity finding by itself.
+
+Rule changes require:
+
+1. A written risk condition stated independently of implementation literals.
+2. Positive fixtures representing the exact unsafe conjunction.
+3. Negative fixtures where one required condition is absent.
+4. Near-miss fixtures for safe values, negation, inactive profiles, and conflicting fields.
+5. Redaction assertions proving no raw source, values, URLs, prompts, or secrets are emitted.
+6. A specific control that changes the unsafe boundary.
+7. OWASP, MITRE ATLAS, and NIST AI RMF mappings.
+
+Run:
+
+```bash
+pnpm verify:rules
+pnpm benchmark:rules
+pnpm test
+```
+
+`pnpm verify:rules` rejects duplicate IDs, schema errors, empty conditions, invalid operators, missing framework mappings, and weak recommendations.
+
+## Confidence
+
+Confidence is computed from correlation depth, object scope, parsing support, data class, authority, external reach, side effects, and reversibility. The evidence tier sets a hard ceiling:
+
+- `typed_path`: maximum `very_high`
+- `structured`: maximum `high`
+- `heuristic`: maximum `medium`
+
+Confidence describes static evidence for the matched condition. It does not establish deployment, reachability, or exploitability.
+
+## Pack Integrity
+
+Package builds copy rules to `packages/core/dist/builtin-rules`. The release gate verifies:
+
+- source and packaged rule counts match
+- the recommended manifest references existing IDs
+- tarballs contain the built-in catalog
+- a clean installed CLI can load and run the packaged rules
+- rule fingerprints are deterministic
+
+A missing or invalid packaged rule catalog is an integrity error and exits with code `3`.

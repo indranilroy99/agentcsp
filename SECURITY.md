@@ -1,41 +1,42 @@
 # Security Policy
 
-AgentCSP is an early-stage open-source AI security tool. Please report vulnerabilities responsibly so maintainers can validate impact, prepare fixes, and avoid exposing users to unnecessary risk.
-
 ## Supported Versions
 
-Security fixes target the default branch until formal releases begin. After tagged releases exist, this policy will be updated with supported version ranges.
+AgentCSP is currently preparing its first public release. Security fixes are applied to the latest release line and `main`.
 
-## Reporting a Vulnerability
+| Version | Supported |
+| --- | --- |
+| `0.2.x` | Yes |
+| `< 0.2` | No |
 
-Use GitHub private vulnerability reporting if it is available for this repository. If private reporting is not available, open a public issue that requests a maintainer contact path, but do not include exploit details, secrets, payloads, or proof-of-concept code in the public issue.
+## Reporting A Vulnerability
 
-Useful reports include:
+Please use [GitHub private vulnerability reporting](https://github.com/indranilroy99/agentcsp/security/advisories/new). Do not include secrets, customer data, exploit traffic, or private repository content beyond the minimum needed to reproduce the issue.
+
+Include:
 
 - affected version or commit
-- reproducible steps
-- expected and observed behavior
-- security impact
-- whether the issue exposes secrets, corrupts scan evidence, hides findings, or enables unsafe agent authority
-- any relevant logs or fixtures with secrets removed
+- impact and attacker-controlled boundary
+- minimal reproduction steps
+- whether secret values, arbitrary file reads, command execution, policy bypass, or artifact tampering are involved
+- any suggested mitigation
+
+The maintainer will acknowledge a complete report as soon as practical, coordinate remediation privately, and credit reporters who request attribution. Public disclosure should wait until a fix or mitigation is available.
+
+## Security Boundaries
+
+AgentCSP scans potentially hostile repositories. Reports involving any of the following are especially important:
+
+- reading or emitting secret values
+- traversal outside the configured scan root
+- repository-controlled policy weakening `ci-strict`
+- arbitrary code execution from rule or configuration files
+- symlink or path-swap attacks against trusted inputs or output artifacts
+- predictable temporary files or unsafe output permissions
+- malformed input causing unbounded CPU, memory, disk, or recursion
+- SARIF, Markdown, terminal, or JSON injection
+- stable-ID collisions that suppress or misattribute findings
 
 ## Scope
 
-In scope:
-
-- scanner behavior that leaks secret values or raw sensitive context
-- incorrect finding suppression or policy bypass
-- rule or manifest behavior that materially misrepresents agent authority
-- unsafe CLI behavior that reads outside the requested scan scope
-- supply-chain or CI/CD issues that affect AgentCSP releases or packaged artifacts
-
-Out of scope:
-
-- findings in intentionally vulnerable demo fixtures
-- reports that require access to private user data without authorization
-- denial-of-service reports that rely only on unrealistic local resource exhaustion
-- duplicate reports for already-known dependency advisories
-
-## Handling
-
-Maintainers should acknowledge security reports promptly, triage severity, keep raw exploit details private until a fix is available, and credit reporters when appropriate.
+Static findings are advisory and do not prove runtime exploitation. Detection disagreements or false positives without a security boundary failure belong in the public issue tracker; scanner vulnerabilities belong in private reporting.

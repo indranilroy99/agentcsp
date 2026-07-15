@@ -1,4 +1,8 @@
 id: AGENTCSP-MCP-009
+maturity: stable
+disposition: advisory
+suppressibility: policy
+support_tier: structured
 name: MCP server inherits ambient secret environment
 description: An MCP server exposes broad process environment passthrough across an external or third-party tool boundary, allowing ambient credentials to reach agent-callable server code.
 category: mcp_environment_exposure

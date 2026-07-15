@@ -1,4 +1,8 @@
 id: AGENTCSP-RUNTIME-005
+maturity: stable
+disposition: advisory
+suppressibility: policy
+support_tier: structured
 name: Runtime auto-approves release package script
 description: An agent runtime configuration auto-approves a package script with release, publish, deploy, or push authority while credential key names are exposed, creating a concrete path from agent-controlled shell permissions to external state changes.
 category: runtime_posture

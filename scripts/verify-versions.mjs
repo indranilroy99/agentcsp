@@ -12,8 +12,10 @@ const failures = [];
 
 assertVersion("packages/core/package.json", corePackage.version);
 assertVersion("packages/cli/package.json", cliPackage.version);
-await assertSourceVersion("packages/cli/src/index.ts", /\.version\("([^"]+)"\)/u, "CLI --version");
-await assertSourceVersion("packages/core/src/manifest/build.ts", /version:\s*"([^"]+)"/u, "manifest scanner version");
+await assertSourceVersion("packages/cli/src/version.ts", /CLI_VERSION\s*=\s*"([^"]+)"/u, "CLI --version");
+await assertSourceVersion("packages/core/src/schemas/index.ts", /ScannerVersion\s*=\s*"([^"]+)"/u, "core scanner version");
+await assertSourceReference("packages/core/src/manifest/build.ts", "version: ScannerVersion", "shared scanner version");
+await assertSourceReference("packages/core/src/reports/baseline.ts", "scanner_version: ScannerVersion", "shared scanner version");
 await assertWorkflowVersion("examples/ci/github-code-scanning-advisory.yml");
 await assertWorkflowVersion("examples/ci/github-code-scanning-gated.yml");
 await assertDocVersion("docs/ci.md");
@@ -42,6 +44,11 @@ async function assertSourceVersion(relativePath, pattern, label) {
     return;
   }
   assertVersion(`${relativePath} ${label}`, actualVersion);
+}
+
+async function assertSourceReference(relativePath, expected, label) {
+  const source = await fs.readFile(path.join(repoRoot, relativePath), "utf8");
+  if (!source.includes(expected)) failures.push(`${relativePath} is missing ${label}`);
 }
 
 async function assertWorkflowVersion(relativePath) {

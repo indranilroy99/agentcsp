@@ -1,4 +1,8 @@
 id: AGENTCSP-TOOL-006
+maturity: stable
+disposition: advisory
+suppressibility: policy
+support_tier: structured
 name: Tool read-only hint conflicts with side-effect authority
 description: A tool schema is marked read-only while its name, description, or arguments indicate external write, destructive, execution, or state-changing authority.
 category: tool_schema_authority

@@ -1,4 +1,8 @@
 id: AGENTCSP-RUNTIME-001
+maturity: stable
+disposition: advisory
+suppressibility: policy
+support_tier: structured
 name: Runtime config disables sandbox and approval gates
 description: An agent runtime configuration allows unsandboxed authority without an approval gate, creating a high-impact path from agent context to local execution.
 category: runtime_posture

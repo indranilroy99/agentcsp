@@ -1,4 +1,5 @@
 import type { AgentManifest, AttackPath, Finding, SurfaceObject } from "../schemas/index.js";
+import { markdownPlainText } from "../utils/markdown.js";
 
 export function renderMarkdownReport(manifest: AgentManifest): string {
   const counts = [
@@ -38,6 +39,8 @@ export function renderMarkdownReport(manifest: AgentManifest): string {
     `- Include hidden paths: \`${manifest.metadata.config.include_hidden}\``,
     `- Include logs: \`${manifest.metadata.config.include_logs}\``,
     `- Max files: ${manifest.metadata.config.max_files}`,
+    `- Max directories: ${manifest.metadata.config.max_directories}`,
+    `- Max entries per directory: ${manifest.metadata.config.max_entries_per_directory}`,
     `- Max file size bytes: ${manifest.metadata.config.max_file_size_bytes}`,
     `- Output path scope: \`${manifest.metadata.config.output_path_scope}\``,
     `- Policy config supplied: \`${manifest.metadata.config.config_path_configured}\``,
@@ -181,7 +184,7 @@ function renderActionPlan(manifest: AgentManifest): string {
     "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ...plan.actions.map(
       (action) =>
-        `| ${action.priority} | ${action.response_tier} | ${action.severity} | ${action.risk_score} | ${action.baseline_status ?? "unbaselined"} | ${action.owner_hint} | ${action.recommended_control.replaceAll("_", " ")} | ${action.rule_id} | ${action.surface_type} | \`${escapeTable(action.path)}\` | ${escapeTable(formatRiskDrivers(action.risk_drivers))} | ${escapeTable(action.validation_steps.join("; "))} | ${escapeTable(action.remediation_steps.join("; "))} | ${escapeTable([...action.rationale, action.response_reason].join("; "))} |`
+        `| ${action.priority} | ${action.response_tier} | ${action.severity} | ${action.risk_score} | ${action.baseline_status ?? "unbaselined"} | ${action.owner_hint} | ${action.recommended_control.replaceAll("_", " ")} | ${action.rule_id} | ${action.surface_type} | ${escapeTable(action.path)} | ${escapeTable(formatRiskDrivers(action.risk_drivers))} | ${escapeTable(action.validation_steps.join("; "))} | ${escapeTable(action.remediation_steps.join("; "))} | ${escapeTable([...action.rationale, action.response_reason].join("; "))} |`
     )
   ].join("\n");
 }
@@ -208,7 +211,7 @@ function renderActionOwnerTable(owners: NonNullable<AgentManifest["action_plan"]
           .join(", ");
         const surfaces = owner.by_surface_type.map((item) => `${item.surface_type}:${item.count}`).join(", ");
         const drivers = owner.by_risk_driver.map((item) => `${item.driver.replaceAll("_", " ")}:${item.count}`).join(", ");
-        const actionIds = owner.top_action_ids.map((id) => `\`${escapeTable(id)}\``).join(", ");
+        const actionIds = owner.top_action_ids.map((id) => `\`${id}\``).join(", ");
         return `| ${owner.owner_hint} | ${owner.count} | ${owner.immediate_actions} | ${owner.urgent_actions} | ${owner.scheduled_actions} | ${owner.backlog_actions} | ${owner.highest_severity} | ${owner.max_risk_score} | ${escapeTable(controls)} | ${escapeTable(surfaces)} | ${escapeTable(drivers || "none")} | ${actionIds}${owner.top_action_ids_truncated ? " ..." : ""} |`;
       }
     )
@@ -452,7 +455,7 @@ function renderGateBlockers(summary: NonNullable<AgentManifest["ci_gate_summary"
   return [
     "| Gate | ID |",
     "| --- | --- |",
-    ...rows.map(([gate, id]) => `| ${gate} | \`${escapeTable(id)}\` |`)
+    ...rows.map(([gate, id]) => `| ${gate} | \`${id}\` |`)
   ].join("\n");
 }
 
@@ -465,7 +468,7 @@ function renderDiagnostics(manifest: AgentManifest): string {
     "| --- | --- | --- | --- | --- |",
     ...manifest.diagnostics.map(
       (diagnostic) =>
-        `| ${diagnostic.severity} | ${diagnostic.code} | ${diagnostic.parser} | \`${escapeTable(diagnostic.file_path)}\` | ${escapeTable(diagnostic.reason)} |`
+        `| ${diagnostic.severity} | ${diagnostic.code} | ${diagnostic.parser} | ${escapeTable(diagnostic.file_path)} | ${escapeTable(diagnostic.reason)} |`
     )
   ].join("\n");
 }
@@ -487,19 +490,37 @@ function renderScanCoverage(manifest: AgentManifest): string {
     `- Directories skipped by ignore rules: ${coverage.directories_skipped_by_ignore}`,
     `- Hidden directories skipped: ${coverage.directories_skipped_hidden}`,
     `- Log directories skipped: ${coverage.directories_skipped_logs}`,
+    `- Directories skipped for entry limit: ${coverage.directories_skipped_for_entry_limit}`,
     `- Diagnostics: ${coverage.diagnostics_total}`,
     `- Diagnostic errors: ${coverage.diagnostics_errors}`,
     `- Diagnostic warnings: ${coverage.diagnostics_warnings}`,
     `- Diagnostic info: ${coverage.diagnostics_info}`,
     `- Max files reached: \`${coverage.max_files_reached}\``,
     `- Max files: ${coverage.max_files}`,
+    `- Max directories reached: \`${coverage.max_directories_reached}\``,
+    `- Max directories: ${coverage.max_directories}`,
+    `- Max entries per directory: ${coverage.max_entries_per_directory}`,
     `- Max file size bytes: ${coverage.max_file_size_bytes}`,
     `- Skipped path preview limit: ${coverage.skipped_path_limit}`,
     `- Oversized file paths truncated: \`${coverage.oversized_file_paths_truncated}\``,
+    `- Directory entry-limit paths truncated: \`${coverage.directory_entry_limit_paths_truncated}\``,
     "",
     "### Oversized Files",
     "",
-    renderOversizedFilePaths(coverage)
+    renderOversizedFilePaths(coverage),
+    "",
+    "### Entry-Limited Directories",
+    "",
+    renderEntryLimitedDirectoryPaths(coverage)
+  ].join("\n");
+}
+
+function renderEntryLimitedDirectoryPaths(coverage: NonNullable<AgentManifest["scan_coverage"]>): string {
+  if (coverage.directory_entry_limit_paths.length === 0) return "No directories exceeded the entry limit.";
+  return [
+    "| Path |",
+    "| --- |",
+    ...coverage.directory_entry_limit_paths.map((directoryPath) => `| ${escapeTable(directoryPath)} |`)
   ].join("\n");
 }
 
@@ -508,7 +529,7 @@ function renderOversizedFilePaths(coverage: NonNullable<AgentManifest["scan_cove
   return [
     "| Path |",
     "| --- |",
-    ...coverage.oversized_file_paths.map((filePath) => `| \`${escapeTable(filePath)}\` |`)
+    ...coverage.oversized_file_paths.map((filePath) => `| ${escapeTable(filePath)} |`)
   ].join("\n");
 }
 
@@ -694,7 +715,7 @@ function renderTopRiskTable(
       const dataClasses = risk.data_classes.length > 0 ? risk.data_classes.join(", ") : "none";
       const actions = risk.actions.length > 0 ? risk.actions.join(", ") : "none";
       const drivers = risk.risk_drivers.length > 0 ? risk.risk_drivers.map((driver) => driver.replaceAll("_", " ")).join(", ") : "none";
-      return `| ${risk.severity} | ${risk.confidence} | ${risk.risk_score} | ${escapeTable(drivers)} | ${escapeTable(risk.impact)} | ${risk.trust_level} | ${escapeTable(dataClasses)} | ${escapeTable(actions)} | \`${risk.external_reach}\` | \`${risk.secret_exposure}\` | \`${risk.untrusted_to_privileged}\` | \`${risk.trust_boundary_crossed}\` | ${risk.rule_id} | \`${escapeTable(object)}\` | \`${escapeTable(risk.path)}\` | ${risk.recommended_control.replaceAll("_", " ")} |`;
+      return `| ${risk.severity} | ${risk.confidence} | ${risk.risk_score} | ${escapeTable(drivers)} | ${escapeTable(risk.impact)} | ${risk.trust_level} | ${escapeTable(dataClasses)} | ${escapeTable(actions)} | \`${risk.external_reach}\` | \`${risk.secret_exposure}\` | \`${risk.untrusted_to_privileged}\` | \`${risk.trust_boundary_crossed}\` | ${risk.rule_id} | ${escapeTable(object)} | ${escapeTable(risk.path)} | ${risk.recommended_control.replaceAll("_", " ")} |`;
     })
   ].join("\n");
 }
@@ -727,7 +748,7 @@ function renderHighestRiskBlastRadiusPaths(findings: Finding[]): string {
         finding.risk.score,
         finding.severity,
         finding.rule_id,
-        `\`${escapeTable(object)}\``,
+        escapeTable(object),
         escapeTable(summarizeFindingBoundary(finding)),
         escapeTable(summarizeFindingData(finding)),
         escapeTable(summarizeFindingActions(finding)),
@@ -785,7 +806,7 @@ function renderAttackPaths(attackPaths: AttackPath[]): string {
     "| --- | --- | --- | --- | --- |",
     ...attackPaths.map((attackPath) => {
       const path = `${attackPath.source.type}:${attackPath.source.name} -> ${attackPath.target.type}:${attackPath.target.name}`;
-      return `| ${attackPath.severity} | ${attackPath.confidence} | ${escapeTable(attackPath.title)} | \`${escapeTable(path)}\` | ${attackPath.recommended_control.replaceAll("_", " ")} |`;
+      return `| ${attackPath.severity} | ${attackPath.confidence} | ${escapeTable(attackPath.title)} | ${escapeTable(path)} | ${attackPath.recommended_control.replaceAll("_", " ")} |`;
     })
   ].join("\n");
 }
@@ -838,7 +859,7 @@ function renderFindingTable(findings: Finding[]): string {
         : "";
       const riskDrivers = finding.risk_summary.drivers.map((driver) => driver.replaceAll("_", " ")).join(", ") || "none";
       const analystSummary = finding.risk_summary.analyst_summary.join("; ");
-      return `| ${finding.severity} | ${finding.confidence} | ${finding.rule_id} | \`${finding.matched_object.type}:${finding.matched_object.name}\` | ${finding.recommended_control.replaceAll("_", " ")} | ${escapeTable(policy)} | ${escapeTable(riskDrivers)} | ${escapeTable(analystSummary)} | ${escapeTable(factors)} |`;
+      return `| ${finding.severity} | ${finding.confidence} | ${finding.rule_id} | ${escapeTable(`${finding.matched_object.type}:${finding.matched_object.name}`)} | ${finding.recommended_control.replaceAll("_", " ")} | ${escapeTable(policy)} | ${escapeTable(riskDrivers)} | ${escapeTable(analystSummary)} | ${escapeTable(factors)} |`;
     })
   ].join("\n");
 }
@@ -851,7 +872,7 @@ function renderSuppressedFindingTable(findings: Finding[]): string {
       const suppression = finding.suppression;
       const matchedOn = suppression?.matched_on.length ? suppression.matched_on.join(", ") : "unknown";
       const matchScope = suppression?.match_scope ? suppression.match_scope.replaceAll("_", " ") : "unknown";
-      return `| ${finding.severity} | ${finding.confidence} | ${finding.rule_id} | \`${finding.matched_object.type}:${finding.matched_object.name}\` | ${finding.recommended_control.replaceAll("_", " ")} | ${suppression?.status ?? "unknown"} | ${matchScope} | ${escapeTable(matchedOn)} | ${suppression?.expires_at ?? "unknown"} |`;
+      return `| ${finding.severity} | ${finding.confidence} | ${finding.rule_id} | ${escapeTable(`${finding.matched_object.type}:${finding.matched_object.name}`)} | ${finding.recommended_control.replaceAll("_", " ")} | ${suppression?.status ?? "unknown"} | ${matchScope} | ${escapeTable(matchedOn)} | ${escapeTable(suppression?.expires_at ?? "unknown")} |`;
     })
   ].join("\n");
 }
@@ -861,10 +882,10 @@ function renderObjectTable(objects: SurfaceObject[]): string {
   return [
     "| Type | Name | Path | Authority |",
     "| --- | --- | --- | --- |",
-    ...objects.map((object) => `| ${object.type} | ${escapeTable(object.name)} | \`${object.path}\` | ${object.actions.join(", ") || "read"} |`)
+    ...objects.map((object) => `| ${object.type} | ${escapeTable(object.name)} | ${escapeTable(object.path)} | ${object.actions.join(", ") || "read"} |`)
   ].join("\n");
 }
 
 function escapeTable(value: string): string {
-  return value.replaceAll("|", "\\|");
+  return markdownPlainText(value);
 }

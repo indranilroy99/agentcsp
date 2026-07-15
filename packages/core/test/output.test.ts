@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { scanProject } from "../src/scanner/scan.js";
+import { tempPath } from "./temp-path.js";
 
 describe("scan output paths", () => {
   it("resolves relative output paths from the scan root", async () => {
@@ -34,7 +35,7 @@ describe("scan output paths", () => {
 
   it("preserves absolute output paths", async () => {
     const root = await createOutputFixture();
-    const outputPath = "/private/tmp/agentcsp-absolute-output-fixture-result";
+    const outputPath = tempPath("agentcsp-absolute-output-fixture-result");
     await fs.rm(outputPath, { recursive: true, force: true });
     const result = await scanProject({
       root_path: root,
@@ -68,8 +69,8 @@ describe("scan output paths", () => {
   });
 
   it("emits a stable manifest fingerprint across equivalent scan roots", async () => {
-    const firstRoot = await createFingerprintFixture("/private/tmp/agentcsp-fingerprint-a");
-    const secondRoot = await createFingerprintFixture("/private/tmp/agentcsp-fingerprint-b");
+    const firstRoot = await createFingerprintFixture(tempPath("agentcsp-fingerprint-a"));
+    const secondRoot = await createFingerprintFixture(tempPath("agentcsp-fingerprint-b"));
 
     const first = await scanProject({
       root_path: firstRoot,
@@ -92,7 +93,8 @@ describe("scan output paths", () => {
       quiet: true
     });
 
-    expect(first.manifest.metadata.root_path).not.toBe(second.manifest.metadata.root_path);
+    expect(first.manifest.metadata.root_path).toBe(".");
+    expect(second.manifest.metadata.root_path).toBe(".");
     expect(first.manifest.metadata.generated_at).not.toBe("");
     expect(second.manifest.metadata.generated_at).not.toBe("");
     expect(first.manifest.metadata.fingerprint?.value).toBe(second.manifest.metadata.fingerprint?.value);
@@ -102,11 +104,10 @@ describe("scan output paths", () => {
 });
 
 async function createOutputFixture(): Promise<string> {
-  const root = "/private/tmp/agentcsp-output-path-fixture";
+  const root = tempPath("agentcsp-output-path-fixture");
   await fs.rm(root, { recursive: true, force: true });
   await fs.mkdir(path.join(root, "security", "agentcsp-output"), { recursive: true });
   await fs.writeFile(path.join(root, "AGENTS.md"), "Review repository changes only.\n", "utf8");
-  await fs.writeFile(path.join(root, "security", "agentcsp-output", "agent-manifest.json"), '{"old": true}\n', "utf8");
   return root;
 }
 

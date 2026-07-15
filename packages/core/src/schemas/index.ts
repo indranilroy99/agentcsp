@@ -1,6 +1,9 @@
 import { z } from "zod";
 
-export const ManifestSchemaVersion = "0.1.0";
+export const ManifestSchemaVersion = "0.2.0";
+export const ScannerVersion = "0.2.0";
+export const ObjectIdentityVersion = "agentcsp-object-v1";
+export const FindingIdentityVersion = "agentcsp-finding-v1";
 
 export const TrustLevelSchema = z.enum([
   "trusted",
@@ -44,6 +47,14 @@ export const ControlSchema = z.enum([
 
 export const SeveritySchema = z.enum(["info", "low", "medium", "high", "critical"]);
 export const ConfidenceSchema = z.enum(["low", "medium", "high", "very_high"]);
+export const ScanProfileSchema = z.enum(["advisory", "ci_strict"]);
+export const ArtifactProfileSchema = z.enum(["portable", "internal"]);
+export const RulesetSchema = z.enum(["recommended", "extended"]);
+export const RuleOriginSchema = z.enum(["built_in", "project", "integrity"]);
+export const RuleMaturitySchema = z.enum(["calibrated", "stable", "experimental"]);
+export const FindingDispositionSchema = z.enum(["blocking", "advisory", "integrity"]);
+export const FindingSuppressibilitySchema = z.enum(["never", "trusted_policy_only", "policy"]);
+export const SupportTierSchema = z.enum(["typed_path", "structured", "heuristic"]);
 export const ResponseTierSchema = z.enum(["immediate", "urgent", "scheduled", "backlog"]);
 export const SuppressionStatusSchema = z.enum(["active", "expired"]);
 export const SuppressionMatchScopeSchema = z.enum([
@@ -84,7 +95,14 @@ export const SuppressionScopeCountsSchema = z.object({
 });
 export const FindingBaselineStatusSchema = z.enum(["new", "existing"]);
 export const CiGateStatusSchema = z.enum(["pass", "fail"]);
-export const CiGateNameSchema = z.enum(["severity", "new_findings", "expired_suppressions", "diagnostics", "scan_health"]);
+export const CiGateNameSchema = z.enum([
+  "blocking_findings",
+  "severity",
+  "new_findings",
+  "expired_suppressions",
+  "diagnostics",
+  "scan_health"
+]);
 export const ScanHealthSchema = z.enum(["complete", "degraded", "incomplete"]);
 export const ScanHealthGateSchema = z.enum(["degraded", "incomplete"]);
 
@@ -155,6 +173,10 @@ export const EvidenceSchema = z.object({
   object_id: z.string(),
   file_path: z.string(),
   line: z.number().int().positive().optional(),
+  parser: z.string().optional(),
+  field_paths: z.array(z.string()).default([]),
+  classifications: z.array(z.string()).default([]),
+  profile: z.string().optional(),
   snippet: z.literal("[redacted by default]").default("[redacted by default]"),
   redacted: z.literal(true).default(true),
   reason: z.string()
@@ -192,6 +214,13 @@ export const SurfaceObjectSchema = z.object({
   untrusted_to_privileged: z.boolean().default(false),
   evidence: z.array(EvidenceSchema).default([]),
   metadata: z.record(z.unknown()).default({})
+});
+
+export const SurfaceObjectArtifactSchema = SurfaceObjectSchema.omit({
+  evidence: true,
+  metadata: true
+}).extend({
+  evidence_refs: z.array(z.string()).default([])
 });
 
 export const GraphNodeRefSchema = z.object({
@@ -261,6 +290,11 @@ export const FindingSchema = z.object({
   severity: SeveritySchema,
   confidence: ConfidenceSchema,
   confidence_rationale: z.array(z.string()).default([]),
+  origin: RuleOriginSchema.optional(),
+  maturity: RuleMaturitySchema.optional(),
+  disposition: FindingDispositionSchema.optional(),
+  suppressibility: FindingSuppressibilitySchema.optional(),
+  support_tier: SupportTierSchema.optional(),
   matched_object: SurfaceObjectSchema,
   file_path: z.string(),
   reason: z.string(),
@@ -280,6 +314,18 @@ export const FindingSchema = z.object({
   suppression: FindingSuppressionSchema.optional(),
   baseline_status: FindingBaselineStatusSchema.optional(),
   evidence: z.array(EvidenceSchema).default([])
+});
+
+export const FindingArtifactSchema = FindingSchema.omit({
+  matched_object: true,
+  evidence: true,
+  confidence_rationale: true,
+  risk: true,
+  risk_summary: true
+}).extend({
+  matched_object_ref: GraphNodeRefSchema,
+  risk: RiskFactorsSchema.omit({ rationale: true }),
+  evidence_refs: z.array(z.string()).default([])
 });
 
 export const SeverityCountsSchema = z.object({
@@ -386,10 +432,26 @@ export const ContentDigestSchema = z.object({
   value: z.string()
 });
 
+export const ArtifactReceiptSchema = z.object({
+  schema_version: z.literal("0.1.0"),
+  status: z.literal("complete"),
+  generated_at: z.string(),
+  artifact_profile: ArtifactProfileSchema,
+  files: z
+    .array(
+      z.object({
+        name: z.string(),
+        size_bytes: z.number().int().nonnegative(),
+        sha256: z.string().regex(/^[a-f0-9]{64}$/)
+      })
+    )
+    .default([])
+});
+
 export const BaselineComparisonSchema = z.object({
   title: z.literal("AgentCSP Baseline Comparison").default("AgentCSP Baseline Comparison"),
   baseline_path: z.string(),
-  baseline_format: z.enum(["findings", "manifest"]),
+  baseline_format: z.enum(["findings", "manifest", "envelope"]),
   baseline_fingerprint: ManifestFingerprintSchema.optional(),
   baseline_rule_pack_fingerprint: ContentDigestSchema.optional(),
   current_findings: z.number().int().nonnegative().default(0),
@@ -408,6 +470,23 @@ export const BaselineComparisonSchema = z.object({
   resolved_finding_ids_truncated: z.boolean().default(false)
 });
 
+export const BaselineEnvelopeSchema = z.object({
+  schema_version: z.literal("0.2.0"),
+  identity_version: z.literal(FindingIdentityVersion),
+  created_at: z.string(),
+  scanner_version: z.string(),
+  source: z.object({
+    manifest_fingerprint: ManifestFingerprintSchema.optional(),
+    rule_pack_fingerprint: ContentDigestSchema.optional()
+  }),
+  findings: z.array(
+    z.object({
+      id: z.string(),
+      rule_id: z.string().optional()
+    })
+  )
+});
+
 export const CiGateSummarySchema = z.object({
   title: z.literal("AgentCSP CI Gate Summary").default("AgentCSP CI Gate Summary"),
   status: CiGateStatusSchema.default("pass"),
@@ -421,6 +500,9 @@ export const CiGateSummarySchema = z.object({
   scan_health: ScanHealthSchema.default("complete"),
   scan_health_reasons: z.array(z.string()).default([]),
   evaluated_findings: z.number().int().nonnegative().default(0),
+  blocking_findings: z.number().int().nonnegative().default(0),
+  blocking_finding_ids: z.array(z.string()).default([]),
+  blocking_finding_ids_truncated: z.boolean().default(false),
   severity_gate_findings: z.number().int().nonnegative().default(0),
   severity_gate_by_severity: SeverityCountsSchema.default({ critical: 0, high: 0, medium: 0, low: 0, info: 0 }),
   severity_gate_by_confidence: ConfidenceCountsSchema.default({ very_high: 0, high: 0, medium: 0, low: 0 }),
@@ -555,17 +637,22 @@ export const AttackPathSchema = z.object({
 });
 
 export const RuleConditionSchema = z.object({
-  field: z.string(),
+  field: z.string().trim().min(1).max(256).regex(/^[A-Za-z0-9_.-]+$/u),
   op: z.enum(["equals", "not_equals", "includes", "contains_any", "exists", "in", "gt", "gte", "lt", "lte"]),
   value: z.unknown().optional()
 });
 
 export const RuleSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  description: z.string(),
-  category: z.string(),
+  id: z.string().trim().min(3).max(128).regex(/^[A-Za-z0-9][A-Za-z0-9._-]+$/u),
+  name: z.string().trim().min(1).max(200).refine((value) => !/[\r\n\u0000-\u001f\u007f-\u009f]/u.test(value)),
+  description: z.string().trim().min(1).max(4000),
+  category: z.string().trim().min(1).max(128).regex(/^[A-Za-z0-9][A-Za-z0-9._-]*$/u),
   severity: SeveritySchema,
+  origin: RuleOriginSchema.optional(),
+  maturity: RuleMaturitySchema.optional(),
+  disposition: FindingDispositionSchema.optional(),
+  suppressibility: FindingSuppressibilitySchema.optional(),
+  support_tier: SupportTierSchema.optional(),
   maps_to: z
     .object({
       owasp: z.array(z.string()).default([]),
@@ -579,8 +666,21 @@ export const RuleSchema = z.object({
   }),
   recommendation: z.object({
     control: ControlSchema,
-    text: z.string()
+    text: z.string().trim().min(1).max(4000)
   })
+});
+
+export const RulePackManifestSchema = z.object({
+  schema_version: z.literal("0.1.0"),
+  id: z.string(),
+  name: z.string(),
+  version: z.string(),
+  minimum_scanner_version: z.string(),
+  description: z.string(),
+  enforcement_status: z.literal("advisory_only"),
+  calibrated_rule_ids: z.array(z.string()).default([]),
+  quality_evidence: z.string(),
+  rule_ids: z.array(z.string()).min(1)
 });
 
 export const PolicySchema = z.object({
@@ -656,6 +756,12 @@ export const StaticBlastRadiusSummarySchema = z.object({
   recommended_controls: z.array(z.string()).default([])
 });
 
+export const StaticBlastRadiusArtifactSchema = StaticBlastRadiusSummarySchema.omit({
+  high_risk_objects: true
+}).extend({
+  high_risk_objects: z.array(SurfaceObjectArtifactSchema).default([])
+});
+
 export const ScanCoverageSummarySchema = z.object({
   title: z.literal("AgentCSP Scan Coverage").default("AgentCSP Scan Coverage"),
   scan_health: ScanHealthSchema.default("complete"),
@@ -668,16 +774,22 @@ export const ScanCoverageSummarySchema = z.object({
   directories_skipped_by_ignore: z.number().int().nonnegative().default(0),
   directories_skipped_hidden: z.number().int().nonnegative().default(0),
   directories_skipped_logs: z.number().int().nonnegative().default(0),
+  directories_skipped_for_entry_limit: z.number().int().nonnegative().default(0),
   diagnostics_total: z.number().int().nonnegative().default(0),
   diagnostics_errors: z.number().int().nonnegative().default(0),
   diagnostics_warnings: z.number().int().nonnegative().default(0),
   diagnostics_info: z.number().int().nonnegative().default(0),
   max_files_reached: z.boolean().default(false),
   max_files: z.number().int().positive(),
+  max_directories_reached: z.boolean().default(false),
+  max_directories: z.number().int().positive(),
+  max_entries_per_directory: z.number().int().positive(),
   max_file_size_bytes: z.number().int().positive(),
   skipped_path_limit: z.number().int().positive().default(50),
   oversized_file_paths: z.array(z.string()).default([]),
-  oversized_file_paths_truncated: z.boolean().default(false)
+  oversized_file_paths_truncated: z.boolean().default(false),
+  directory_entry_limit_paths: z.array(z.string()).default([]),
+  directory_entry_limit_paths_truncated: z.boolean().default(false)
 });
 
 export const InventorySummarySchema = z.object({
@@ -715,16 +827,29 @@ export const ManifestMetadataSchema = z.object({
     name: z.literal("agentcsp"),
     version: z.string()
   }),
+  identity: z.object({
+    object: z.literal(ObjectIdentityVersion),
+    finding: z.literal(FindingIdentityVersion)
+  }),
   fingerprint: ManifestFingerprintSchema.optional(),
   config: z.object({
+    profile: ScanProfileSchema,
+    artifact_profile: ArtifactProfileSchema,
+    ruleset: RulesetSchema,
     formats: z.array(z.enum(["json", "md", "sarif"])).default([]),
     include_hidden: z.boolean(),
     include_logs: z.boolean(),
     max_file_size_bytes: z.number().int().positive(),
     max_files: z.number().int().positive(),
+    max_directories: z.number().int().positive(),
+    max_entries_per_directory: z.number().int().positive(),
     output_path_scope: z.enum(["inside_scan_root", "outside_scan_root"]),
     config_path_configured: z.boolean().default(false),
+    config_digest_verified: z.boolean().default(false),
     baseline_path_configured: z.boolean().default(false),
+    baseline_digest_verified: z.boolean().default(false),
+    project_ignore_applied: z.boolean().default(true),
+    project_rules_loaded: z.boolean().default(false),
     fail_on: SeveritySchema.optional(),
     fail_on_confidence: ConfidenceSchema.optional(),
     fail_on_new: z.boolean().default(false),
@@ -776,20 +901,61 @@ export const AgentManifestSchema = z.object({
   static_blast_radius: StaticBlastRadiusSummarySchema.optional()
 });
 
+export const AgentManifestArtifactSchema = AgentManifestSchema.omit({
+  agents: true,
+  instructions: true,
+  skills: true,
+  plugins: true,
+  mcp_servers: true,
+  tools: true,
+  prompts: true,
+  rag_sources: true,
+  memory: true,
+  secrets: true,
+  runtime_config: true,
+  ci_cd: true,
+  automations: true,
+  findings: true,
+  static_blast_radius: true
+}).extend({
+  agents: z.array(SurfaceObjectArtifactSchema).default([]),
+  instructions: z.array(SurfaceObjectArtifactSchema).default([]),
+  skills: z.array(SurfaceObjectArtifactSchema).default([]),
+  plugins: z.array(SurfaceObjectArtifactSchema).default([]),
+  mcp_servers: z.array(SurfaceObjectArtifactSchema).default([]),
+  tools: z.array(SurfaceObjectArtifactSchema).default([]),
+  prompts: z.array(SurfaceObjectArtifactSchema).default([]),
+  rag_sources: z.array(SurfaceObjectArtifactSchema).default([]),
+  memory: z.array(SurfaceObjectArtifactSchema).default([]),
+  secrets: z.array(SurfaceObjectArtifactSchema).default([]),
+  runtime_config: z.array(SurfaceObjectArtifactSchema).default([]),
+  ci_cd: z.array(SurfaceObjectArtifactSchema).default([]),
+  automations: z.array(SurfaceObjectArtifactSchema).default([]),
+  findings: z.array(FindingArtifactSchema).default([]),
+  static_blast_radius: StaticBlastRadiusArtifactSchema.optional()
+});
+
 export const ScanConfigSchema = z
   .object({
     root_path: z.string(),
     output_path: z.string().default(".agentcsp"),
+    profile: ScanProfileSchema.default("advisory"),
+    artifact_profile: ArtifactProfileSchema.default("portable"),
+    ruleset: RulesetSchema.default("extended"),
     config_path: z.string().optional(),
+    config_sha256: z.string().regex(/^[a-f0-9]{64}$/i).optional(),
     formats: z.array(z.enum(["json", "md", "sarif"])).default(["json", "md"]),
     include_hidden: z.boolean().default(true),
     include_logs: z.boolean().default(false),
     max_file_size_bytes: z.number().int().positive().default(1024 * 1024),
     max_files: z.number().int().positive().default(5000),
+    max_directories: z.number().int().positive().default(10_000),
+    max_entries_per_directory: z.number().int().positive().default(10_000),
     quiet: z.boolean().default(false),
     fail_on: SeveritySchema.optional(),
     fail_on_confidence: ConfidenceSchema.optional(),
     baseline_path: z.string().optional(),
+    baseline_sha256: z.string().regex(/^[a-f0-9]{64}$/i).optional(),
     fail_on_new: z.boolean().default(false),
     fail_on_expired_suppressions: z.boolean().default(false),
     fail_on_diagnostics: z.boolean().default(false),
@@ -817,6 +983,34 @@ export const ScanConfigSchema = z
         message: "fail_on_new requires baseline_path"
       });
     }
+    if (config.config_sha256 && !config.config_path) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["config_sha256"],
+        message: "config_sha256 requires config_path"
+      });
+    }
+    if (config.baseline_sha256 && !config.baseline_path) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["baseline_sha256"],
+        message: "baseline_sha256 requires baseline_path"
+      });
+    }
+    if (config.profile === "ci_strict" && config.config_path && !config.config_sha256) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["config_sha256"],
+        message: "ci_strict requires config_sha256 for an explicit policy"
+      });
+    }
+    if (config.profile === "ci_strict" && config.baseline_path && !config.baseline_sha256) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["baseline_sha256"],
+        message: "ci_strict requires baseline_sha256 for a baseline"
+      });
+    }
   });
 
 export type TrustLevel = z.infer<typeof TrustLevelSchema>;
@@ -825,6 +1019,14 @@ export type ActionType = z.infer<typeof ActionTypeSchema>;
 export type Control = z.infer<typeof ControlSchema>;
 export type Severity = z.infer<typeof SeveritySchema>;
 export type Confidence = z.infer<typeof ConfidenceSchema>;
+export type ScanProfile = z.infer<typeof ScanProfileSchema>;
+export type ArtifactProfile = z.infer<typeof ArtifactProfileSchema>;
+export type Ruleset = z.infer<typeof RulesetSchema>;
+export type RuleOrigin = z.infer<typeof RuleOriginSchema>;
+export type RuleMaturity = z.infer<typeof RuleMaturitySchema>;
+export type FindingDisposition = z.infer<typeof FindingDispositionSchema>;
+export type FindingSuppressibility = z.infer<typeof FindingSuppressibilitySchema>;
+export type SupportTier = z.infer<typeof SupportTierSchema>;
 export type ResponseTier = z.infer<typeof ResponseTierSchema>;
 export type SuppressionStatus = z.infer<typeof SuppressionStatusSchema>;
 export type FindingBaselineStatus = z.infer<typeof FindingBaselineStatusSchema>;
@@ -837,6 +1039,7 @@ export type RiskFactors = z.infer<typeof RiskFactorsSchema>;
 export type Evidence = z.infer<typeof EvidenceSchema>;
 export type ScanDiagnostic = z.infer<typeof ScanDiagnosticSchema>;
 export type SurfaceObject = z.infer<typeof SurfaceObjectSchema>;
+export type SurfaceObjectArtifact = z.infer<typeof SurfaceObjectArtifactSchema>;
 export type GraphNodeRef = z.infer<typeof GraphNodeRefSchema>;
 export type GraphRelation = z.infer<typeof GraphRelationSchema>;
 export type GraphEdge = z.infer<typeof GraphEdgeSchema>;
@@ -848,6 +1051,7 @@ export type PolicyControlChangeDirection = z.infer<typeof PolicyControlChangeDir
 export type FindingPolicyControl = z.infer<typeof FindingPolicyControlSchema>;
 export type FindingRiskSummary = z.infer<typeof FindingRiskSummarySchema>;
 export type Finding = z.infer<typeof FindingSchema>;
+export type FindingArtifact = z.infer<typeof FindingArtifactSchema>;
 export type SeverityCounts = z.infer<typeof SeverityCountsSchema>;
 export type ConfidenceCounts = z.infer<typeof ConfidenceCountsSchema>;
 export type TriageRiskDriver = z.infer<typeof TriageRiskDriverSchema>;
@@ -855,14 +1059,18 @@ export type TriageSummary = z.infer<typeof TriageSummarySchema>;
 export type RemediationAction = z.infer<typeof RemediationActionSchema>;
 export type ActionPlanSummary = z.infer<typeof ActionPlanSummarySchema>;
 export type BaselineComparison = z.infer<typeof BaselineComparisonSchema>;
+export type BaselineEnvelope = z.infer<typeof BaselineEnvelopeSchema>;
 export type CiGateSummary = z.infer<typeof CiGateSummarySchema>;
 export type ScanCoverageSummary = z.infer<typeof ScanCoverageSummarySchema>;
 export type InventorySummary = z.infer<typeof InventorySummarySchema>;
 export type ManifestFingerprint = z.infer<typeof ManifestFingerprintSchema>;
 export type ContentDigest = z.infer<typeof ContentDigestSchema>;
+export type ArtifactReceipt = z.infer<typeof ArtifactReceiptSchema>;
 export type Rule = z.infer<typeof RuleSchema>;
+export type RulePackManifest = z.infer<typeof RulePackManifestSchema>;
 export type Policy = z.infer<typeof PolicySchema>;
 export type AgentManifest = z.infer<typeof AgentManifestSchema>;
+export type AgentManifestArtifact = z.infer<typeof AgentManifestArtifactSchema>;
 export type ScanConfig = z.infer<typeof ScanConfigSchema>;
 export type StaticBlastRadiusSummary = z.infer<typeof StaticBlastRadiusSummarySchema>;
 export type RulePackSummary = z.infer<typeof ManifestMetadataSchema>["rule_pack"];

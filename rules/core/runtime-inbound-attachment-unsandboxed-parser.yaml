@@ -1,4 +1,8 @@
 id: AGENTCSP-RUNTIME-120
+maturity: stable
+disposition: advisory
+suppressibility: policy
+support_tier: structured
 name: Unsandboxed inbound attachments can drive privileged agent tools
 description: An inbound email, chat, ticket, or webhook trigger extracts raw attachment content without sandboxing, malware scanning, or instruction stripping, then routes that content into privileged agent tools with credential-backed authority and no approval gate.
 category: inbound_attachment_parser_boundary

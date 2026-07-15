@@ -1,17 +1,73 @@
 import { describe, expect, it } from "vitest";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { applyBaselineComparison, baselineFindingIdLimit } from "../src/reports/baseline.js";
+import {
+  applyBaselineComparison,
+  baselineFindingIdLimit,
+  createBaselineEnvelope,
+  diffBaselineEnvelopes
+} from "../src/reports/baseline.js";
 import { scanProject } from "../src/scanner/scan.js";
 import type { Finding } from "../src/schemas/index.js";
+import { tempPath } from "./temp-path.js";
 
 const fixtureRoot = path.resolve("examples/vulnerable-agent");
 
 describe("baseline comparison", () => {
+  it("creates deterministic v0.2 envelopes and diffs finding identities", () => {
+    const createdAt = new Date("2026-01-02T03:04:05.000Z");
+    const baseline = createBaselineEnvelope(
+      [
+        { id: "finding_b", rule_id: "RULE-B" },
+        { id: "finding_a", rule_id: "RULE-A" },
+        { id: "finding_a" }
+      ],
+      createdAt
+    );
+    const current = createBaselineEnvelope(
+      [
+        { id: "finding_b", rule_id: "RULE-B" },
+        { id: "finding_c", rule_id: "RULE-C" }
+      ],
+      createdAt
+    );
+
+    expect(baseline).toMatchObject({
+      schema_version: "0.2.0",
+      identity_version: "agentcsp-finding-v1",
+      created_at: createdAt.toISOString(),
+      findings: [
+        { id: "finding_a", rule_id: "RULE-A" },
+        { id: "finding_b", rule_id: "RULE-B" }
+      ]
+    });
+    expect(diffBaselineEnvelopes(baseline, current)).toEqual({
+      added: ["finding_c"],
+      removed: ["finding_a"],
+      unchanged: ["finding_b"]
+    });
+  });
+
+  it("compares against the exact baseline bytes supplied by trusted-input verification", async () => {
+    const baselinePath = tempPath("agentcsp-pinned-baseline.json");
+    const approved = '[{"id":"finding_approved"}]\n';
+    await fs.writeFile(baselinePath, '[{"id":"finding_replaced"}]\n', "utf8");
+
+    const result = await applyBaselineComparison(
+      [finding("finding_approved")],
+      baselinePath,
+      undefined,
+      Buffer.from(approved)
+    );
+
+    expect(result.findings[0]?.baseline_status).toBe("existing");
+    expect(result.comparison.resolved_findings).toBe(0);
+  });
+
   it("marks unchanged findings as existing when scanning against a manifest baseline", async () => {
     const baseline = await scanProject({
       root_path: fixtureRoot,
-      output_path: "/private/tmp/agentcsp-baseline-source",
+      output_path: tempPath("agentcsp-baseline-source"),
       formats: ["json", "md", "sarif"],
       include_hidden: true,
       include_logs: false,
@@ -22,7 +78,7 @@ describe("baseline comparison", () => {
 
     const result = await scanProject({
       root_path: fixtureRoot,
-      output_path: "/private/tmp/agentcsp-baseline-existing",
+      output_path: tempPath("agentcsp-baseline-existing"),
       baseline_path: baseline.outputFiles.manifest,
       formats: ["json", "md", "sarif"],
       include_hidden: true,
@@ -31,7 +87,7 @@ describe("baseline comparison", () => {
       max_files: 5000,
       quiet: true,
       fail_on: "critical",
-      fail_on_confidence: "very_high",
+      fail_on_confidence: "medium",
       fail_on_new: true
     });
 
@@ -98,7 +154,7 @@ describe("baseline comparison", () => {
   it("tracks new and resolved findings from a findings baseline", async () => {
     const baseline = await scanProject({
       root_path: fixtureRoot,
-      output_path: "/private/tmp/agentcsp-baseline-source-findings",
+      output_path: tempPath("agentcsp-baseline-source-findings"),
       formats: ["json", "md"],
       include_hidden: true,
       include_logs: false,
@@ -107,11 +163,11 @@ describe("baseline comparison", () => {
       quiet: true
     });
     const targetNewFinding = baseline.findings.find(
-      (finding) => finding.rule_id === "AGENTCSP-TOOL-004" && finding.confidence === "very_high"
+      (finding) => finding.rule_id === "AGENTCSP-TOOL-004"
     );
     expect(targetNewFinding).toBeDefined();
 
-    const baselinePath = "/private/tmp/agentcsp-findings-baseline-with-drift.json";
+    const baselinePath = tempPath("agentcsp-findings-baseline-with-drift.json");
     await fs.writeFile(
       baselinePath,
       `${JSON.stringify([
@@ -125,7 +181,7 @@ describe("baseline comparison", () => {
 
     const result = await scanProject({
       root_path: fixtureRoot,
-      output_path: "/private/tmp/agentcsp-baseline-drift",
+      output_path: tempPath("agentcsp-baseline-drift"),
       baseline_path: baselinePath,
       formats: ["json", "md", "sarif"],
       include_hidden: true,
@@ -133,8 +189,8 @@ describe("baseline comparison", () => {
       max_file_size_bytes: 1024 * 1024,
       max_files: 5000,
       quiet: true,
-      fail_on: "critical",
-      fail_on_confidence: "very_high",
+      fail_on: targetNewFinding?.severity ?? "critical",
+      fail_on_confidence: targetNewFinding?.confidence ?? "medium",
       fail_on_new: true
     });
 
@@ -185,7 +241,7 @@ describe("baseline comparison", () => {
   });
 
   it("bounds baseline comparison ID previews while preserving exact counts", async () => {
-    const baselinePath = "/private/tmp/agentcsp-large-baseline.json";
+    const baselinePath = tempPath("agentcsp-large-baseline.json");
     await fs.writeFile(
       baselinePath,
       `${JSON.stringify(
@@ -201,7 +257,7 @@ describe("baseline comparison", () => {
       finding(`new_${index.toString().padStart(3, "0")}`)
     );
 
-    const result = await applyBaselineComparison(findings, baselinePath, "/private/tmp");
+    const result = await applyBaselineComparison(findings, baselinePath, tempPath());
 
     expect(result.comparison).toMatchObject({
       current_findings: baselineFindingIdLimit + 3,
@@ -221,7 +277,7 @@ describe("baseline comparison", () => {
   });
 
   it("summarizes new baseline drift by severity, confidence, and risk driver", async () => {
-    const baselinePath = "/private/tmp/agentcsp-baseline-drift-mix.json";
+    const baselinePath = tempPath("agentcsp-baseline-drift-mix.json");
     await fs.writeFile(baselinePath, '[{"id":"existing_high"}]\n', "utf8");
 
     const result = await applyBaselineComparison(
@@ -247,7 +303,7 @@ describe("baseline comparison", () => {
         })
       ],
       baselinePath,
-      "/private/tmp"
+      tempPath()
     );
 
     expect(result.comparison).toMatchObject({
@@ -310,7 +366,7 @@ describe("baseline comparison", () => {
   });
 
   it("resolves relative baseline paths from the scan root", async () => {
-    const root = "/private/tmp/agentcsp-relative-baseline-fixture";
+    const root = tempPath("agentcsp-relative-baseline-fixture");
     await fs.rm(root, { recursive: true, force: true });
     await fs.mkdir(path.join(root, "baselines"), { recursive: true });
     await fs.writeFile(path.join(root, "AGENTS.md"), "Review repository changes only.\n", "utf8");
@@ -342,10 +398,10 @@ describe("baseline comparison", () => {
   });
 
   it("redacts external baseline paths in emitted artifacts", async () => {
-    const root = "/private/tmp/agentcsp-external-baseline-fixture";
-    const externalBaselinePath = "/private/tmp/agentcsp-external-baseline-store/team/accepted.json";
+    const root = tempPath("agentcsp-external-baseline-fixture");
+    const externalBaselinePath = tempPath("agentcsp-external-baseline-store/team/accepted.json");
     await fs.rm(root, { recursive: true, force: true });
-    await fs.rm("/private/tmp/agentcsp-external-baseline-store", { recursive: true, force: true });
+    await fs.rm(tempPath("agentcsp-external-baseline-store"), { recursive: true, force: true });
     await fs.mkdir(root, { recursive: true });
     await fs.mkdir(path.dirname(externalBaselinePath), { recursive: true });
     await fs.writeFile(path.join(root, "AGENTS.md"), "Review repository changes only.\n", "utf8");
@@ -367,9 +423,9 @@ describe("baseline comparison", () => {
       baseline_path: "<external-baseline>",
       baseline_format: "findings"
     });
-    expect(JSON.stringify(result.manifest)).not.toContain("/private/tmp/agentcsp-external-baseline-store");
+    expect(JSON.stringify(result.manifest)).not.toContain(tempPath("agentcsp-external-baseline-store"));
     expect(result.reportMarkdown).toContain("`<external-baseline>`");
-    expect(result.reportMarkdown).not.toContain("/private/tmp/agentcsp-external-baseline-store");
+    expect(result.reportMarkdown).not.toContain(tempPath("agentcsp-external-baseline-store"));
     const sarif = JSON.parse(await fs.readFile(result.outputFiles.sarif!, "utf8")) as {
       runs: Array<{ properties?: { agentcsp_baseline_comparison?: { baseline_path?: string } } }>;
     };
@@ -377,14 +433,14 @@ describe("baseline comparison", () => {
   });
 
   it("redacts external baseline paths in read errors", async () => {
-    const root = "/private/tmp/agentcsp-missing-external-baseline-fixture";
-    const externalBaselinePath = "/private/tmp/agentcsp-missing-external-baseline-store/team/accepted.json";
+    const root = tempPath("agentcsp-missing-external-baseline-fixture");
+    const externalBaselinePath = tempPath("agentcsp-missing-external-baseline-store/team/accepted.json");
     await fs.rm(root, { recursive: true, force: true });
-    await fs.rm("/private/tmp/agentcsp-missing-external-baseline-store", { recursive: true, force: true });
+    await fs.rm(tempPath("agentcsp-missing-external-baseline-store"), { recursive: true, force: true });
     await fs.mkdir(root, { recursive: true });
     await fs.writeFile(path.join(root, "AGENTS.md"), "Review repository changes only.\n", "utf8");
 
-    let message = "";
+    let captured: unknown;
     try {
       await scanProject({
         root_path: root,
@@ -398,11 +454,26 @@ describe("baseline comparison", () => {
         quiet: true
       });
     } catch (error) {
-      message = error instanceof Error ? error.message : String(error);
+      captured = error;
     }
 
-    expect(message).toContain("Unable to read baseline file <external-baseline>: ENOENT");
-    expect(message).not.toContain("/private/tmp/agentcsp-missing-external-baseline-store");
+    expect(captured).toMatchObject({
+      code: "AGENTCSP-E1001",
+      kind: "input",
+      message: "Baseline <external-baseline> does not exist."
+    });
+    expect(String(captured)).not.toContain(tempPath("agentcsp-missing-external-baseline-store"));
+  });
+
+  it("classifies malformed baseline JSON as configuration input", async () => {
+    const baselinePath = tempPath("agentcsp-malformed-baseline.json");
+    await fs.writeFile(baselinePath, "{not-json}\n", "utf8");
+
+    await expect(applyBaselineComparison([], baselinePath, tempPath())).rejects.toMatchObject({
+      code: "AGENTCSP-E1002",
+      kind: "configuration",
+      message: expect.stringContaining("is not valid JSON")
+    });
   });
 });
 

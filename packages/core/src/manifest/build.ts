@@ -2,7 +2,10 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import {
   AgentManifestSchema,
+  FindingIdentityVersion,
   ManifestSchemaVersion,
+  ObjectIdentityVersion,
+  ScannerVersion,
   type ActionPlanSummary,
   type AgentManifest,
   type AttackPath,
@@ -39,27 +42,42 @@ export function buildManifest(input: {
   inventorySummary?: InventorySummary;
   staticBlastRadius?: StaticBlastRadiusSummary;
 }): AgentManifest {
-  const evidence = collectEvidence(input.surfaces, input.findings ?? []);
+  const findings = artifactFindings(input.findings ?? [], input.scanConfig.artifact_profile);
+  const evidence = collectEvidence(input.surfaces, findings);
   const manifest = AgentManifestSchema.parse({
     metadata: {
       schema_version: ManifestSchemaVersion,
       generated_at: new Date().toISOString(),
-      root_path: path.resolve(input.rootPath),
+      root_path: input.scanConfig.artifact_profile === "portable" ? "." : path.resolve(input.rootPath),
       scanner: {
         name: "agentcsp",
-        version: "0.1.0"
+        version: ScannerVersion
+      },
+      identity: {
+        object: ObjectIdentityVersion,
+        finding: FindingIdentityVersion
       },
       config: {
+        profile: input.scanConfig.profile,
+        artifact_profile: input.scanConfig.artifact_profile,
+        ruleset: input.scanConfig.ruleset,
         formats: [...input.scanConfig.formats].sort(),
         include_hidden: input.scanConfig.include_hidden,
         include_logs: input.scanConfig.include_logs,
         max_file_size_bytes: input.scanConfig.max_file_size_bytes,
         max_files: input.scanConfig.max_files,
+        max_directories: input.scanConfig.max_directories,
+        max_entries_per_directory: input.scanConfig.max_entries_per_directory,
         output_path_scope: isPathInsideRoot(input.rootPath, input.scanConfig.output_path)
           ? "inside_scan_root"
           : "outside_scan_root",
         config_path_configured: input.scanConfig.config_path !== undefined,
+        config_digest_verified: input.scanConfig.config_path !== undefined && input.scanConfig.config_sha256 !== undefined,
         baseline_path_configured: input.scanConfig.baseline_path !== undefined,
+        baseline_digest_verified:
+          input.scanConfig.baseline_path !== undefined && input.scanConfig.baseline_sha256 !== undefined,
+        project_ignore_applied: input.scanConfig.profile !== "ci_strict",
+        project_rules_loaded: input.rulePackSummary.project_rules_loaded,
         fail_on: input.scanConfig.fail_on,
         fail_on_confidence: input.scanConfig.fail_on_confidence,
         fail_on_new: input.scanConfig.fail_on_new,
@@ -86,7 +104,7 @@ export function buildManifest(input: {
     automations: sortObjects(input.surfaces.automations),
     relationships: sortRelationships(input.relationships ?? []),
     attack_paths: sortAttackPaths(input.attackPaths ?? []),
-    findings: sortFindings(input.findings ?? []),
+    findings: sortFindings(findings),
     evidence,
     diagnostics: input.surfaces.diagnostics,
     triage_summary: input.triageSummary,
@@ -104,6 +122,29 @@ export function buildManifest(input: {
       fingerprint: fingerprintManifest(manifest)
     }
   });
+}
+
+function artifactFindings(
+  findings: Finding[],
+  profile: ScanConfig["artifact_profile"]
+): Finding[] {
+  if (profile === "internal") return findings;
+  return findings.map((finding) => ({
+    ...finding,
+    policy_control: finding.policy_control
+      ? {
+          ...finding.policy_control,
+          reason: "[redacted in portable artifact]"
+        }
+      : undefined,
+    suppression: finding.suppression
+      ? {
+          ...finding.suppression,
+          reason: "[redacted in portable artifact]",
+          owner: "[redacted in portable artifact]"
+        }
+      : undefined
+  }));
 }
 
 export function allManifestObjects(manifestOrSurfaces: AgentManifest | DetectedSurfaces): SurfaceObject[] {
@@ -172,7 +213,7 @@ function attackPathPriority(path: AttackPath): number {
 }
 
 function fingerprintManifest(manifest: AgentManifest): AgentManifest["metadata"]["fingerprint"] {
-  const fingerprintInput = {
+  const fingerprintInput = normalizeVolatileFindingFields({
     ...manifest,
     metadata: {
       ...manifest.metadata,
@@ -180,10 +221,31 @@ function fingerprintManifest(manifest: AgentManifest): AgentManifest["metadata"]
       root_path: "<excluded>",
       fingerprint: undefined
     }
-  };
+  });
   return {
     algorithm: "sha256",
     value: createHash("sha256").update(canonicalJson(fingerprintInput)).digest("hex"),
-    excludes: ["metadata.generated_at", "metadata.root_path", "metadata.fingerprint"]
+    excludes: [
+      "metadata.generated_at",
+      "metadata.root_path",
+      "metadata.fingerprint",
+      "findings[].policy_control.applied_at",
+      "findings[].suppression.applied_at"
+    ]
+  };
+}
+
+function normalizeVolatileFindingFields(manifest: AgentManifest): AgentManifest {
+  return {
+    ...manifest,
+    findings: manifest.findings.map((finding) => ({
+      ...finding,
+      policy_control: finding.policy_control
+        ? { ...finding.policy_control, applied_at: "<excluded>" }
+        : undefined,
+      suppression: finding.suppression
+        ? { ...finding.suppression, applied_at: "<excluded>" }
+        : undefined
+    }))
   };
 }

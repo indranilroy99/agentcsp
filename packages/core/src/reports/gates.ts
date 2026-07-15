@@ -50,6 +50,12 @@ export function buildCiGateSummary(input: {
     ? input.findings.filter((finding) => finding.baseline_status === "new")
     : input.findings;
   const failOn = input.config.fail_on;
+  const blockingFindings =
+    input.config.profile === "ci_strict"
+      ? evaluatedFindings.filter(
+          (finding) => finding.disposition === "blocking" && finding.suppression?.status !== "active"
+        )
+      : [];
   const severityGateFindings = failOn
     ? evaluatedFindings.filter((finding) =>
         findingMatchesSeverityGate(finding, failOn, input.config.fail_on_confidence)
@@ -63,14 +69,18 @@ export function buildCiGateSummary(input: {
   const activeSuppressionsExcluded = activeSuppressionFindings.length;
   const failedGates: CiGateName[] = [];
   const diagnosticIds = input.diagnostics.map((diagnostic) => diagnostic.id).sort();
+  const gateDiagnostics = input.diagnostics.filter((diagnostic) => diagnostic.severity !== "info");
 
+  if (blockingFindings.length > 0) {
+    failedGates.push("blocking_findings");
+  }
   if (severityGateFindings.length > 0) {
     failedGates.push(input.config.fail_on_new ? "new_findings" : "severity");
   }
   if (input.config.fail_on_expired_suppressions && expiredSuppressionFindings.length > 0) {
     failedGates.push("expired_suppressions");
   }
-  if (input.config.fail_on_diagnostics && input.diagnostics.length > 0) {
+  if (input.config.fail_on_diagnostics && gateDiagnostics.length > 0) {
     failedGates.push("diagnostics");
   }
   if (
@@ -80,6 +90,7 @@ export function buildCiGateSummary(input: {
     failedGates.push("scan_health");
   }
   const severityGateFindingIds = limitIds(severityGateFindings.map((finding) => finding.id));
+  const blockingFindingIds = limitIds(blockingFindings.map((finding) => finding.id));
   const broadActiveSuppressionFindingIds = limitIds(broadActiveSuppressionFindings.map((finding) => finding.id));
   const expiredSuppressionFindingIds = limitIds(expiredSuppressionFindings.map((finding) => finding.id));
   const limitedDiagnosticIds = limitIds(diagnosticIds);
@@ -97,6 +108,9 @@ export function buildCiGateSummary(input: {
     scan_health: input.scanCoverage.scan_health,
     scan_health_reasons: input.scanCoverage.scan_health_reasons,
     evaluated_findings: evaluatedFindings.length,
+    blocking_findings: blockingFindings.length,
+    blocking_finding_ids: blockingFindingIds,
+    blocking_finding_ids_truncated: blockingFindings.length > blockingFindingIds.length,
     severity_gate_findings: severityGateFindings.length,
     severity_gate_by_severity: countBySeverity(severityGateFindings),
     severity_gate_by_confidence: countByConfidence(severityGateFindings),
@@ -115,6 +129,7 @@ export function buildCiGateSummary(input: {
     blocker_id_limit: ciGateBlockerIdLimit,
     blocker_ids_truncated:
       severityGateFindings.length > severityGateFindingIds.length ||
+      blockingFindings.length > blockingFindingIds.length ||
       broadActiveSuppressionFindings.length > broadActiveSuppressionFindingIds.length ||
       expiredSuppressionFindings.length > expiredSuppressionFindingIds.length ||
       diagnosticIds.length > limitedDiagnosticIds.length,

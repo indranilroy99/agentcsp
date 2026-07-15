@@ -2,8 +2,12 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 import {
+  BaselineEnvelopeSchema,
   ContentDigestSchema,
+  FindingIdentityVersion,
   ManifestFingerprintSchema,
+  ScannerVersion,
+  type BaselineEnvelope,
   type BaselineComparison,
   type ContentDigest,
   type ConfidenceCounts,
@@ -11,6 +15,7 @@ import {
   type ManifestFingerprint,
   type SeverityCounts
 } from "../schemas/index.js";
+import { AgentCspError } from "../errors.js";
 import { isPathInsideRoot, relativePath } from "../utils/paths.js";
 import { riskDriverOrder, riskDriversForFinding } from "./risk-drivers.js";
 
@@ -33,6 +38,7 @@ const BaselineManifestFileSchema = z
       .optional()
   })
   .passthrough();
+const baselineMaxBytes = 10 * 1024 * 1024;
 export const baselineFindingIdLimit = 50;
 
 export interface BaselineResult {
@@ -43,11 +49,12 @@ export interface BaselineResult {
 export async function applyBaselineComparison(
   findings: Finding[],
   baselinePath: string,
-  rootPath?: string
+  rootPath?: string,
+  verifiedContent?: Uint8Array
 ): Promise<BaselineResult> {
   const absoluteBaselinePath = path.resolve(baselinePath);
   const displayBaselinePath = baselineComparisonPath(absoluteBaselinePath, rootPath);
-  const baseline = await loadBaselineFindingIds(absoluteBaselinePath, displayBaselinePath);
+  const baseline = await loadBaselineFindingIds(absoluteBaselinePath, displayBaselinePath, verifiedContent);
   const baselineIds = new Set(baseline.findingIds);
   const currentIds = new Set(findings.map((finding) => finding.id));
 
@@ -100,7 +107,8 @@ function baselineComparisonPath(absoluteBaselinePath: string, rootPath?: string)
 
 async function loadBaselineFindingIds(
   baselinePath: string,
-  displayBaselinePath = baselinePath
+  displayBaselinePath = baselinePath,
+  verifiedContent?: Uint8Array
 ): Promise<{
   findingIds: string[];
   format: BaselineComparison["baseline_format"];
@@ -109,9 +117,21 @@ async function loadBaselineFindingIds(
 }> {
   let parsedJson: unknown;
   try {
-    parsedJson = JSON.parse(await fs.readFile(baselinePath, "utf8"));
+    parsedJson = verifiedContent
+      ? JSON.parse(Buffer.from(verifiedContent).toString("utf8"))
+      : await readBaselineJson(baselinePath);
   } catch (error) {
-    throw new Error(`Unable to read baseline file ${displayBaselinePath}: ${baselineErrorMessage(error, baselinePath, displayBaselinePath)}`);
+    throw classifyBaselineReadError(error, displayBaselinePath);
+  }
+
+  const envelope = BaselineEnvelopeSchema.safeParse(parsedJson);
+  if (envelope.success) {
+    return {
+      findingIds: uniqueSortedIds(envelope.data.findings),
+      format: "envelope",
+      fingerprint: envelope.data.source.manifest_fingerprint,
+      rulePackFingerprint: envelope.data.source.rule_pack_fingerprint
+    };
   }
 
   const findingsFile = BaselineFindingsFileSchema.safeParse(parsedJson);
@@ -132,17 +152,145 @@ async function loadBaselineFindingIds(
     };
   }
 
-  throw new Error("Baseline file must be a findings.json array or an agent-manifest.json object with a findings array.");
+  throw new AgentCspError({
+    code: "AGENTCSP-E1002",
+    kind: "configuration",
+    problem: `Baseline ${displayBaselinePath} is not a supported baseline document.`,
+    fix: "Use a v0.2 baseline envelope, findings.json array, or agent-manifest.json object with a findings array.",
+    help: "https://github.com/indranilroy99/agentcsp/blob/main/docs/usage.md#baselines"
+  });
 }
 
-function baselineErrorMessage(error: unknown, baselinePath: string, displayBaselinePath: string): string {
-  if (displayBaselinePath !== baselinePath) {
-    const code = error && typeof error === "object" && "code" in error ? String((error as { code?: unknown }).code) : "";
-    if (code) return code;
-    if (error instanceof SyntaxError) return error.message;
-    return "baseline could not be read or parsed";
+function classifyBaselineReadError(error: unknown, displayBaselinePath: string): AgentCspError {
+  if (error instanceof AgentCspError) return error;
+  const code = error && typeof error === "object" && "code" in error ? String(error.code) : undefined;
+  if (code === "ENOENT") {
+    return new AgentCspError({
+      code: "AGENTCSP-E1001",
+      kind: "input",
+      problem: `Baseline ${displayBaselinePath} does not exist.`,
+      fix: "Check the configured baseline path and rerun the scan.",
+      help: "https://github.com/indranilroy99/agentcsp/blob/main/docs/usage.md#baselines",
+      cause: error
+    });
   }
-  return error instanceof Error ? error.message : String(error);
+  if (code === "EACCES" || code === "EPERM") {
+    return new AgentCspError({
+      code: "AGENTCSP-E1003",
+      kind: "input",
+      problem: `Baseline ${displayBaselinePath} is not readable.`,
+      fix: "Grant the minimum required read permission or select an accessible baseline.",
+      help: "https://github.com/indranilroy99/agentcsp/blob/main/docs/usage.md#baselines",
+      cause: error
+    });
+  }
+  return new AgentCspError({
+    code: "AGENTCSP-E1002",
+    kind: "configuration",
+    problem: `Baseline ${displayBaselinePath} is not valid JSON.`,
+    fix: "Validate the baseline JSON or create a new v0.2 baseline envelope.",
+    help: "https://github.com/indranilroy99/agentcsp/blob/main/docs/usage.md#baselines",
+    cause: error
+  });
+}
+
+export async function createBaselineEnvelopeFromFile(
+  sourcePath: string,
+  now = new Date()
+): Promise<BaselineEnvelope> {
+  let parsed: unknown;
+  try {
+    parsed = await readBaselineJson(path.resolve(sourcePath));
+  } catch (error) {
+    throw classifyBaselineReadError(error, sourcePath);
+  }
+  return createBaselineEnvelope(parsed, now);
+}
+
+export function createBaselineEnvelope(source: unknown, now = new Date()): BaselineEnvelope {
+  const existing = BaselineEnvelopeSchema.safeParse(source);
+  if (existing.success) {
+    return BaselineEnvelopeSchema.parse({
+      ...existing.data,
+      findings: uniqueBaselineRecords(existing.data.findings)
+    });
+  }
+
+  const findingsFile = BaselineFindingsFileSchema.safeParse(source);
+  if (findingsFile.success) {
+    return baselineEnvelope(uniqueBaselineRecords(findingsFile.data), {}, now);
+  }
+
+  const manifestFile = BaselineManifestFileSchema.safeParse(source);
+  if (manifestFile.success) {
+    return baselineEnvelope(
+      uniqueBaselineRecords(manifestFile.data.findings),
+      {
+        manifest_fingerprint: manifestFile.data.metadata?.fingerprint,
+        rule_pack_fingerprint: manifestFile.data.metadata?.rule_pack?.fingerprint
+      },
+      now
+    );
+  }
+
+  throw new AgentCspError({
+    code: "AGENTCSP-E1002",
+    kind: "configuration",
+    problem: "Baseline source is not a supported findings, manifest, or baseline document.",
+    fix: "Pass findings.json, agent-manifest.json, or a v0.2 baseline envelope.",
+    help: "https://github.com/indranilroy99/agentcsp/blob/main/docs/usage.md#baselines"
+  });
+}
+
+export function diffBaselineEnvelopes(
+  baseline: BaselineEnvelope,
+  current: BaselineEnvelope
+): { added: string[]; removed: string[]; unchanged: string[] } {
+  const baselineIds = new Set(baseline.findings.map((finding) => finding.id));
+  const currentIds = new Set(current.findings.map((finding) => finding.id));
+  return {
+    added: [...currentIds].filter((id) => !baselineIds.has(id)).sort((a, b) => a.localeCompare(b)),
+    removed: [...baselineIds].filter((id) => !currentIds.has(id)).sort((a, b) => a.localeCompare(b)),
+    unchanged: [...currentIds].filter((id) => baselineIds.has(id)).sort((a, b) => a.localeCompare(b))
+  };
+}
+
+async function readBaselineJson(baselinePath: string): Promise<unknown> {
+  const stats = await fs.stat(baselinePath);
+  if (!stats.isFile() || stats.size > baselineMaxBytes) {
+    throw new AgentCspError({
+      code: "AGENTCSP-E2003",
+      kind: "configuration",
+      problem: `Baseline must be a regular JSON file no larger than ${baselineMaxBytes} bytes.`,
+      fix: "Use a compact v0.2 baseline envelope or reduce the baseline file size.",
+      help: "https://github.com/indranilroy99/agentcsp/blob/main/docs/usage.md#baselines"
+    });
+  }
+  return JSON.parse(await fs.readFile(baselinePath, "utf8"));
+}
+
+function baselineEnvelope(
+  findings: BaselineEnvelope["findings"],
+  source: BaselineEnvelope["source"],
+  now: Date
+): BaselineEnvelope {
+  return BaselineEnvelopeSchema.parse({
+    schema_version: "0.2.0",
+    identity_version: FindingIdentityVersion,
+    created_at: now.toISOString(),
+    scanner_version: ScannerVersion,
+    source,
+    findings
+  });
+}
+
+function uniqueBaselineRecords(findings: Array<{ id: string; rule_id?: string }>): BaselineEnvelope["findings"] {
+  const records = new Map<string, { id: string; rule_id?: string }>();
+  for (const finding of findings) {
+    const current = records.get(finding.id);
+    if (!current || (!current.rule_id && finding.rule_id)) records.set(finding.id, finding);
+  }
+  return [...records.values()].sort((a, b) => a.id.localeCompare(b.id));
 }
 
 function uniqueSortedIds(findings: Array<{ id: string }>): string[] {

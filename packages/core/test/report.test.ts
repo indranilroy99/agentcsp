@@ -3,13 +3,14 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { scanProject } from "../src/scanner/scan.js";
 import { renderSarifReport } from "../src/reports/sarif.js";
+import { tempPath } from "./temp-path.js";
 
 describe("scanProject", () => {
   it("emits a manifest, findings, and a static blast-radius report", async () => {
     const rootPath = path.resolve("examples/vulnerable-agent");
     const result = await scanProject({
       root_path: rootPath,
-      output_path: "/private/tmp/agentcsp-test-output",
+      output_path: tempPath("agentcsp-test-output"),
       formats: ["json", "md", "sarif"],
       include_hidden: true,
       include_logs: false,
@@ -21,7 +22,13 @@ describe("scanProject", () => {
     expect(result.manifest.metadata.config.secret_values_collected).toBe(false);
     expect(result.manifest.metadata.fingerprint).toMatchObject({
       algorithm: "sha256",
-      excludes: ["metadata.generated_at", "metadata.root_path", "metadata.fingerprint"]
+      excludes: [
+        "metadata.generated_at",
+        "metadata.root_path",
+        "metadata.fingerprint",
+        "findings[].policy_control.applied_at",
+        "findings[].suppression.applied_at"
+      ]
     });
     expect(result.manifest.metadata.fingerprint?.value).toMatch(/^[a-f0-9]{64}$/u);
     expect(result.manifest.metadata.rule_pack).toMatchObject({
@@ -91,7 +98,8 @@ describe("scanProject", () => {
     expect(result.manifest.triage_summary?.active_findings).toBeGreaterThan(0);
     expect(result.manifest.triage_summary?.highest_active_severity).toBe("critical");
     expect(result.manifest.triage_summary?.active_by_severity.critical).toBeGreaterThan(0);
-    expect(result.manifest.triage_summary?.active_by_confidence.very_high).toBeGreaterThan(0);
+    expect(result.manifest.triage_summary?.active_by_confidence.medium).toBeGreaterThan(0);
+    expect(result.manifest.triage_summary?.active_by_confidence.very_high).toBe(0);
     expect(result.manifest.triage_summary?.active_by_surface_type.some((item) => item.surface_type === "tool")).toBe(true);
     expect(result.manifest.triage_summary?.active_by_recommended_control.length).toBeGreaterThan(0);
     expect(
@@ -318,7 +326,13 @@ describe("scanProject", () => {
     expect(sarif.runs[0]?.properties?.agentcsp_manifest_fingerprint).toMatchObject({
       algorithm: "sha256",
       value: result.manifest.metadata.fingerprint?.value,
-      excludes: ["metadata.generated_at", "metadata.root_path", "metadata.fingerprint"]
+      excludes: [
+        "metadata.generated_at",
+        "metadata.root_path",
+        "metadata.fingerprint",
+        "findings[].policy_control.applied_at",
+        "findings[].suppression.applied_at"
+      ]
     });
     expect(sarif.runs[0]?.properties?.agentcsp_rule_pack).toMatchObject({
       fingerprint: {
@@ -412,7 +426,7 @@ describe("scanProject", () => {
       "| Priority | Response | Severity | Risk | Baseline | Owner | Control | Rule | Surface | Path | Drivers | Validation steps | Remediation steps | Rationale |"
     );
     expect(result.reportMarkdown).toContain("Confirm the matched surface is still active");
-    expect(result.reportMarkdown).toContain("Apply recommended control:");
+    expect(result.reportMarkdown).toContain("Apply recommended control&#58;");
     expect(result.reportMarkdown).toContain("- Root: `<scan-root>`");
     expect(result.reportMarkdown).not.toContain(rootPath);
     expect(result.reportMarkdown).toContain("- Scan health: `complete`");
@@ -447,7 +461,7 @@ describe("scanProject", () => {
     expect(result.reportMarkdown).toContain("- Recommended controls truncated: `true`");
     expect(result.reportMarkdown).toContain("## Highest-Risk Blast-Radius Paths");
     expect(result.reportMarkdown).toContain("| Risk | Severity | Rule | Object | Boundary | Data | Actions | Recommended control |");
-    expect(result.reportMarkdown).toContain("untrusted -> privileged");
+    expect(result.reportMarkdown).toContain("untrusted -&gt; privileged");
     expect(result.reportMarkdown).toContain("secret exposure");
     expect(result.reportMarkdown).toContain("## Scan Coverage");
     expect(result.reportMarkdown).toContain("- Skipped path preview limit: 50");
@@ -463,14 +477,14 @@ describe("scanProject", () => {
     expect(result.reportMarkdown).toContain(
       "| Severity | Confidence | Rule | Object | Recommended control | Policy | Risk drivers | Analyst summary | Risk factors |"
     );
-    expect(result.reportMarkdown).toContain("Control objective:");
+    expect(result.reportMarkdown).toContain("Control objective&#58;");
     expect(result.reportMarkdown).toContain("Policy actions in this MVP are recommended controls");
   });
 
   it("emits a quiet triage summary for the safe fixture", async () => {
     const result = await scanProject({
       root_path: path.resolve("examples/safe-agent"),
-      output_path: "/private/tmp/agentcsp-safe-report-test-output",
+      output_path: tempPath("agentcsp-safe-report-test-output"),
       formats: ["json", "md", "sarif"],
       include_hidden: true,
       include_logs: false,
@@ -551,7 +565,7 @@ describe("scanProject", () => {
   it("redacts absolute artifact paths in SARIF locations", async () => {
     const result = await scanProject({
       root_path: path.resolve("examples/vulnerable-agent"),
-      output_path: "/private/tmp/agentcsp-sarif-redaction-test-output",
+      output_path: tempPath("agentcsp-sarif-redaction-test-output"),
       formats: ["json", "md"],
       include_hidden: true,
       include_logs: false,
@@ -587,7 +601,7 @@ describe("scanProject", () => {
   it("reports generated-state replay findings when logs are included", async () => {
     const result = await scanProject({
       root_path: path.resolve("examples/vulnerable-agent"),
-      output_path: "/private/tmp/agentcsp-include-logs-report-test-output",
+      output_path: tempPath("agentcsp-include-logs-report-test-output"),
       formats: ["json", "md", "sarif"],
       include_hidden: true,
       include_logs: true,
@@ -606,7 +620,7 @@ describe("scanProject", () => {
   it("fingerprints the exact normalized rule pack, including project-local rules", async () => {
     const defaultResult = await scanProject({
       root_path: path.resolve("examples/safe-agent"),
-      output_path: "/private/tmp/agentcsp-rule-pack-default",
+      output_path: tempPath("agentcsp-rule-pack-default"),
       formats: ["json", "md"],
       include_hidden: true,
       include_logs: false,
@@ -614,7 +628,7 @@ describe("scanProject", () => {
       max_files: 5000,
       quiet: true
     });
-    const projectRoot = await fs.mkdtemp("/private/tmp/agentcsp-rule-pack-project-");
+    const projectRoot = await fs.mkdtemp(tempPath("agentcsp-rule-pack-project-"));
     await fs.writeFile(
       path.join(projectRoot, "AGENTS.md"),
       "Use standard project instructions for local testing.\n",
@@ -645,7 +659,7 @@ describe("scanProject", () => {
 
     const projectResult = await scanProject({
       root_path: projectRoot,
-      output_path: "/private/tmp/agentcsp-rule-pack-project-output",
+      output_path: tempPath("agentcsp-rule-pack-project-output"),
       formats: ["json", "md"],
       include_hidden: true,
       include_logs: false,

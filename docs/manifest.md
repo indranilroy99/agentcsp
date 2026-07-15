@@ -32,11 +32,15 @@ Core sections:
 - `inventory_summary`
 - `static_blast_radius`
 
-The manifest is versioned and validated with Zod. JSON Schema exports live in `schemas/` and are also packaged with `@agentcsp/core` under `dist/json-schemas/` for installed integrations.
+The v0.2 manifest is versioned and validated with Zod. JSON Schema exports describe the default portable artifact and live in `schemas/`; they are also packaged with `@agentcsp/core` under `dist/json-schemas/` for installed integrations.
+
+The `portable` artifact profile is the default. Surface objects omit internal parser metadata, findings link to `matched_object_ref` and `evidence_refs`, and policy ownership or reason text is redacted. This avoids repeating large normalized objects in every finding and keeps routine CI artifacts shareable.
+
+The `internal` artifact profile emits the full normalized manifest and findings for deep local analysis and release fixture verification. It can contain internal field names, hosts, key names, ownership, and policy reasons, although evidence snippets and secret values remain redacted. Treat internal artifacts as sensitive security data.
 
 `metadata.config` records the non-secret scan contract used to produce the manifest: requested output formats, hidden/log scan settings, file and traversal limits, output-path scope, whether policy or baseline inputs were configured, CI gate thresholds, and the invariant redaction flags. It intentionally does not emit raw `--out`, `--config`, or `--baseline` absolute paths.
 
-`metadata.fingerprint` records a SHA-256 content fingerprint for comparing equivalent scans across CI runners, workstations, and output directories. The fingerprint excludes `metadata.generated_at`, `metadata.root_path`, and `metadata.fingerprint` so volatile timestamps and host-absolute paths do not change the value.
+`metadata.fingerprint` records a SHA-256 content fingerprint for comparing equivalent scans across CI runners, workstations, and output directories. The fingerprint excludes generated timestamps, host-absolute roots, the fingerprint field itself, and volatile policy/suppression application timestamps.
 
 `metadata.rule_pack` records rule-pack provenance without exposing local rule paths or rule contents: SHA-256 fingerprint of the normalized rule set, built-in rule count, project-local rule count, total rules loaded, whether project-local rules were added, redacted rule diagnostic count, and deterministic coverage rollups by category, severity, and target surface.
 
@@ -44,11 +48,11 @@ The manifest is versioned and validated with Zod. JSON Schema exports live in `s
 
 `triage_summary.active_by_risk_driver` records deterministic drivers behind active risk, including untrusted-to-privileged influence, secret exposure, external reach, irreversible action, side effects, sensitive data, credential data, PII data, execute-class actions, and write-class actions. Each driver includes a finding count, max risk score, and severity mix so CI dashboards and local reports can explain why findings matter without parsing redacted evidence snippets.
 
-Each finding includes `risk_summary`, a compact analyst-facing explanation derived from normalized metadata rather than raw file content. It records the primary risk driver, ordered drivers, impact, control objective, and bounded analyst summary lines. These fields are designed for triage queues, SARIF consumers, and dashboards that need to explain why a finding matters without exposing snippets, secret values, endpoint values, or host-absolute paths.
+Internal findings include `risk_summary`, an analyst-facing explanation derived from normalized metadata rather than raw file content. Portable findings keep compact risk factors and stable references; report, triage, and action-plan sections retain the bounded analyst view without duplicating full summaries in every JSON finding.
 
-When a finding is matched by an advisory policy suppression, `suppression.match_scope` records how narrowly the accepted-risk record matched the finding. Scopes range from `specific_finding` and `specific_object` through `rule_and_path`, `rule`, `path`, `category`, `severity`, and `broad`. JSON output retains the full suppression audit record, while Markdown and SARIF keep only sanitized status, expiry, match scope, and matched-field context.
+When a finding is matched by an advisory policy suppression, `suppression.match_scope` records how narrowly the accepted-risk record matched the finding. Scopes range from `specific_finding` and `specific_object` through `rule_and_path`, `rule`, `path`, `category`, `severity`, and `broad`. Internal JSON retains the full suppression audit record. Portable JSON, Markdown, and SARIF redact ownership and reason text while keeping status, expiry, match scope, and matched-field context.
 
-When a finding is matched by an advisory recommended-control policy, `policy_control.match_scope` records how narrowly the control matched and `policy_control.change_direction` records whether the recommended control was strengthened, weakened, or left unchanged. JSON output retains the full policy-control reason for audit workflows. Markdown and SARIF redact the reason while keeping control direction, scope, and matched-field context.
+When a finding is matched by an advisory recommended-control policy, `policy_control.match_scope` records how narrowly the control matched and `policy_control.change_direction` records whether the recommended control was strengthened, weakened, or left unchanged. Internal JSON retains the full reason for local audit workflows. Portable JSON, Markdown, and SARIF redact the reason while keeping control direction, scope, and matched-field context.
 
 ## MCP Server Authority
 
@@ -2998,14 +3002,17 @@ The summary includes:
 - files and directories skipped by default ignore rules or `.agentcspignore`
 - hidden directories skipped
 - log directories skipped
+- directories omitted because they exceeded `max_entries_per_directory`
 - diagnostic totals by severity through `diagnostics_total`, `diagnostics_errors`, `diagnostics_warnings`, and `diagnostics_info`
 - whether `max_files` was reached
-- configured `max_files` and `max_file_size_bytes`
+- whether `max_directories` was reached
+- configured `max_files`, `max_directories`, `max_entries_per_directory`, and `max_file_size_bytes`
 - bounded oversized-file previews through `skipped_path_limit`, `oversized_file_paths`, and `oversized_file_paths_truncated`
+- bounded entry-limited directory previews through `directory_entry_limit_paths` and `directory_entry_limit_paths_truncated`
 - `scan_health`, one of `complete`, `degraded`, or `incomplete`
 - stable `scan_health_reasons`
 
-`complete` means the configured scan scope completed without parser or traversal health issues. `degraded` means the scan completed but one or more files or security-relevant configs may need review, such as oversized skipped files or parser diagnostics. `incomplete` means traversal missed part of the configured scope, such as `max_files` exhaustion or a directory/file stat failure.
+`complete` means the configured scan scope completed without parser or traversal health issues. `degraded` means the scan completed but one or more files or security-relevant configs may need review, such as oversized skipped files or parser diagnostics. `incomplete` means traversal missed part of the configured scope, such as file or directory quota exhaustion, an entry-limited directory, or a directory/file stat failure.
 
 Default ignore rules include prior AgentCSP output directories such as `.agentcsp`, `.agentcsp-*`, and `.agentcsp_*`. When the configured output directory is inside the scanned root, that output directory is ignored as well. This prevents repeated scans from ingesting stale manifests, findings, reports, or SARIF files.
 
@@ -3013,7 +3020,7 @@ Coverage does not include raw file contents or host-absolute skipped paths. Over
 
 ## Diagnostics
 
-`diagnostics` records scan health issues that may affect completeness, such as malformed MCP configs, runtime configs, package manifests, workflow files, policy files, project-local rule files, tool definition files, transient traversal read/stat failures, or traversal stopped by `max_files` exhaustion.
+`diagnostics` records scan health issues that may affect completeness, such as malformed MCP configs, runtime configs, package manifests, workflow files, policy files, project-local rule files, tool definition files, transient traversal read/stat failures, or traversal stopped by a configured resource limit.
 
 Each diagnostic includes:
 
@@ -3029,7 +3036,7 @@ Diagnostics do not include raw parser stack traces, raw file contents, secret va
 
 Policy diagnostics include malformed `agentcsp.yaml`, schema-invalid policy files, and explicitly supplied missing `--config` paths. Scans continue with empty advisory policy in those cases so evidence is still generated; default missing policy files do not create diagnostics.
 
-Traversal diagnostics include `SCAN_FILE_STAT_FAILED`, `SCAN_DIRECTORY_READ_FAILED`, and `SCAN_MAX_FILES_REACHED` when the scanner cannot inspect a non-root path or stops after reaching the configured `max_files` limit. This makes incomplete scans visible in JSON, Markdown, SARIF run properties, and optional `--fail-on-diagnostics` CI gates without emitting raw OS error details.
+Traversal diagnostics include `SCAN_FILE_STAT_FAILED`, `SCAN_DIRECTORY_READ_FAILED`, `SCAN_MAX_FILES_REACHED`, `SCAN_MAX_DIRECTORIES_REACHED`, and `SCAN_DIRECTORY_ENTRY_LIMIT_REACHED`. These make incomplete scans visible in JSON, Markdown, SARIF run properties, and optional `--fail-on-diagnostics` CI gates without emitting raw OS error details.
 
 ## AgentCSP Policy Integrity Posture
 

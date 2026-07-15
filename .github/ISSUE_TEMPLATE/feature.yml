@@ -1,0 +1,33 @@
+name: Feature proposal
+description: Propose an AI agent security workflow or supported surface.
+title: "proposal: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: workflow
+    attributes:
+      label: Security-team workflow
+      description: Who needs this, what decision are they making, and what do they do today?
+    validations:
+      required: true
+  - type: textarea
+    id: boundary
+    attributes:
+      label: Trust boundary and authority
+      description: What can the agent see, call, remember, or execute? Which input can an attacker influence?
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Minimum evidence
+      description: Describe the deterministic fields needed to support a finding without copying raw content.
+    validations:
+      required: true
+  - type: textarea
+    id: limits
+    attributes:
+      label: False-positive controls and limitations
+    validations:
+      required: true

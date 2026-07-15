@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
-import { AgentManifestSchema, FindingSchema } from "../packages/core/dist/schemas/index.js";
+import { AgentManifestArtifactSchema, FindingArtifactSchema } from "../packages/core/dist/schemas/index.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -65,6 +65,8 @@ try {
       outputPath,
       "--format",
       "json,md,sarif",
+      "--ruleset",
+      "extended",
       "--quiet"
     ],
     {
@@ -77,8 +79,8 @@ try {
   const rawFindings = await fs.readFile(path.join(outputPath, "findings.json"), "utf8");
   const rawReport = await fs.readFile(path.join(outputPath, "report.md"), "utf8");
   const rawSarif = await fs.readFile(path.join(outputPath, "agentcsp.sarif"), "utf8");
-  const manifest = AgentManifestSchema.parse(JSON.parse(rawManifest));
-  const findings = FindingSchema.array().parse(JSON.parse(rawFindings));
+  const manifest = AgentManifestArtifactSchema.parse(JSON.parse(rawManifest));
+  const findings = FindingArtifactSchema.array().parse(JSON.parse(rawFindings));
   const sarif = JSON.parse(rawSarif);
   const rawOutput = [rawManifest, rawFindings, rawReport, rawSarif].join("\n");
 

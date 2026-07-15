@@ -5,16 +5,26 @@
       "type": "object",
       "properties": {
         "id": {
-          "type": "string"
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]+$"
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
         },
         "description": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
         },
         "category": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "severity": {
           "type": "string",
@@ -24,6 +34,46 @@
             "medium",
             "high",
             "critical"
+          ]
+        },
+        "origin": {
+          "type": "string",
+          "enum": [
+            "built_in",
+            "project",
+            "integrity"
+          ]
+        },
+        "maturity": {
+          "type": "string",
+          "enum": [
+            "calibrated",
+            "stable",
+            "experimental"
+          ]
+        },
+        "disposition": {
+          "type": "string",
+          "enum": [
+            "blocking",
+            "advisory",
+            "integrity"
+          ]
+        },
+        "suppressibility": {
+          "type": "string",
+          "enum": [
+            "never",
+            "trusted_policy_only",
+            "policy"
+          ]
+        },
+        "support_tier": {
+          "type": "string",
+          "enum": [
+            "typed_path",
+            "structured",
+            "heuristic"
           ]
         },
         "maps_to": {
@@ -85,7 +135,10 @@
                 "type": "object",
                 "properties": {
                   "field": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256,
+                    "pattern": "^[A-Za-z0-9_.-]+$"
                   },
                   "op": {
                     "type": "string",
@@ -130,7 +183,9 @@
               ]
             },
             "text": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000
             }
           },
           "required": [

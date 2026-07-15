@@ -1,4 +1,8 @@
 id: AGENTCSP-RUNTIME-004
+maturity: stable
+disposition: advisory
+suppressibility: policy
+support_tier: structured
 name: Runtime auto-approves secret-backed privileged tools
 description: An agent runtime configuration auto-approves privileged tool permissions while exposing credential key names, creating a concrete path from agent-controlled context to secret-backed authority without per-call review.
 category: runtime_posture

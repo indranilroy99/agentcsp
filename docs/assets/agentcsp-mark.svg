@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-labelledby="title desc">
+  <title id="title">AgentCSP mark</title>
+  <desc id="desc">A shield containing four connected security-surface nodes converging on a central policy gate.</desc>
+  <path d="M80 8 139 30v43c0 38-22 65-59 79C43 138 21 111 21 73V30L80 8Z" fill="#0b1220" stroke="#35d0a3" stroke-width="6" stroke-linejoin="round"/>
+  <g fill="none" stroke="#9aa8bc" stroke-width="4" stroke-linecap="round">
+    <path d="m49 49 22 21M111 49 89 70M49 106l22-20M111 106 89 86"/>
+  </g>
+  <g fill="#0b1220" stroke="#e6edf7" stroke-width="4">
+    <circle cx="43" cy="43" r="9"/>
+    <circle cx="117" cy="43" r="9"/>
+    <circle cx="43" cy="112" r="9"/>
+    <circle cx="117" cy="112" r="9"/>
+  </g>
+  <rect x="65" y="64" width="30" height="30" rx="4" fill="#35d0a3" stroke="#e6edf7" stroke-width="4"/>
+  <path d="M73 79h14M80 72v14" stroke="#0b1220" stroke-width="4" stroke-linecap="round"/>
+  <path d="M61 124h38" stroke="#35d0a3" stroke-width="4" stroke-linecap="round"/>
+</svg>

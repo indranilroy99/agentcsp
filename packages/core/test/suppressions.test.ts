@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { scanProject } from "../src/scanner/scan.js";
 import { ciGateBlockerIdLimit } from "../src/reports/gates.js";
+import { tempPath } from "./temp-path.js";
 
 const fixtureRoot = path.resolve("examples/vulnerable-agent");
 
@@ -11,7 +12,7 @@ describe("policy suppressions", () => {
     const policyPath = await writeRecommendedControlPolicy();
     const result = await scanProject({
       root_path: fixtureRoot,
-      output_path: "/private/tmp/agentcsp-policy-control",
+      output_path: tempPath("agentcsp-policy-control"),
       config_path: policyPath,
       formats: ["json", "md", "sarif"],
       include_hidden: true,
@@ -36,13 +37,13 @@ describe("policy suppressions", () => {
     expect(finding?.evidence.every((item) => item.redacted)).toBe(true);
     expect(result.shouldFail).toBe(true);
     expect(result.reportMarkdown).toContain("policy override from require approval to deny");
-    expect(result.reportMarkdown).toContain("direction: strengthened");
-    expect(result.reportMarkdown).toContain("scope: rule and path");
-    expect(result.reportMarkdown).toContain("matched on: rule_id, path");
+    expect(result.reportMarkdown).toContain("direction&#58; strengthened");
+    expect(result.reportMarkdown).toContain("scope&#58; rule and path");
+    expect(result.reportMarkdown).toContain("matched on&#58; rule&#95;id, path");
     expect(result.reportMarkdown).toContain("reason redacted");
     expect(result.reportMarkdown).not.toContain("Organization policy forbids unsandboxed runtime without approval.");
     expect(JSON.stringify(result.manifest.findings)).toContain("deny-unsandboxed-runtime");
-    expect(JSON.stringify(result.manifest.findings)).toContain("Organization policy forbids unsandboxed runtime without approval.");
+    expect(JSON.stringify(result.manifest.findings)).not.toContain("Organization policy forbids unsandboxed runtime without approval.");
     const sarif = JSON.parse(await fs.readFile(result.outputFiles.sarif!, "utf8")) as {
       runs: Array<{
         results?: Array<{
@@ -71,7 +72,7 @@ describe("policy suppressions", () => {
     const policyPath = await writePolicy("active", "2999-12-31T23:59:59.000Z");
     const result = await scanProject({
       root_path: fixtureRoot,
-      output_path: "/private/tmp/agentcsp-suppression-active",
+      output_path: tempPath("agentcsp-suppression-active"),
       config_path: policyPath,
       formats: ["json", "md", "sarif"],
       include_hidden: true,
@@ -152,7 +153,7 @@ describe("policy suppressions", () => {
     const policyPath = await writePolicy("expired", "2000-01-01T00:00:00.000Z");
     const result = await scanProject({
       root_path: fixtureRoot,
-      output_path: "/private/tmp/agentcsp-suppression-expired",
+      output_path: tempPath("agentcsp-suppression-expired"),
       config_path: policyPath,
       formats: ["json", "md", "sarif"],
       include_hidden: true,
@@ -185,7 +186,7 @@ describe("policy suppressions", () => {
     expect(result.reportMarkdown).toContain("### Expired Suppressions");
     expect(result.reportMarkdown).toContain("### CI Gate Blockers");
     expect(result.reportMarkdown).toContain("expired suppression");
-    expect(result.reportMarkdown).toContain("2000-01-01T00:00:00.000Z");
+    expect(result.reportMarkdown).toContain("2000-01-01T00&#58;00&#58;00.000Z");
     expect(result.reportMarkdown).not.toContain("expired-critical-demo-risk");
     expect(result.reportMarkdown).not.toContain("Accepted for fixture regression only.");
     expect(result.reportMarkdown).not.toContain("security@example.com");
@@ -195,7 +196,7 @@ describe("policy suppressions", () => {
     const policyPath = await writePolicy("expired-waiver", "2000-01-01T00:00:00.000Z");
     const result = await scanProject({
       root_path: fixtureRoot,
-      output_path: "/private/tmp/agentcsp-suppression-expired-gate",
+      output_path: tempPath("agentcsp-suppression-expired-gate"),
       config_path: policyPath,
       formats: ["json", "md", "sarif"],
       include_hidden: true,
@@ -226,7 +227,7 @@ describe("policy suppressions", () => {
     const policyPath = await writePolicy("expired-observed", "2000-01-01T00:00:00.000Z");
     const result = await scanProject({
       root_path: fixtureRoot,
-      output_path: "/private/tmp/agentcsp-suppression-expired-observed",
+      output_path: tempPath("agentcsp-suppression-expired-observed"),
       config_path: policyPath,
       formats: ["json", "md", "sarif"],
       include_hidden: true,
@@ -255,7 +256,7 @@ describe("policy suppressions", () => {
     const policyPath = await writeRulePathSuppressionPolicy();
     const result = await scanProject({
       root_path: fixtureRoot,
-      output_path: "/private/tmp/agentcsp-suppression-rule-path",
+      output_path: tempPath("agentcsp-suppression-rule-path"),
       config_path: policyPath,
       formats: ["json", "md", "sarif"],
       include_hidden: true,
@@ -291,7 +292,7 @@ describe("policy suppressions", () => {
 });
 
 async function writePolicy(name: string, expiresAt: string): Promise<string> {
-  const policyPath = `/private/tmp/agentcsp-${name}-policy.yaml`;
+  const policyPath = tempPath(`agentcsp-${name}-policy.yaml`);
   await fs.writeFile(
     policyPath,
     [
@@ -318,7 +319,7 @@ function firstGateBlockerIds(findings: Array<{ id: string }>): string[] {
 }
 
 async function writeRecommendedControlPolicy(): Promise<string> {
-  const policyPath = "/private/tmp/agentcsp-recommended-control-policy.yaml";
+  const policyPath = tempPath("agentcsp-recommended-control-policy.yaml");
   await fs.writeFile(
     policyPath,
     [
@@ -338,7 +339,7 @@ async function writeRecommendedControlPolicy(): Promise<string> {
 }
 
 async function writeRulePathSuppressionPolicy(): Promise<string> {
-  const policyPath = "/private/tmp/agentcsp-rule-path-suppression-policy.yaml";
+  const policyPath = tempPath("agentcsp-rule-path-suppression-policy.yaml");
   await fs.writeFile(
     policyPath,
     [

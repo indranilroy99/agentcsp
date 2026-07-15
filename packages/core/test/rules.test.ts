@@ -5,6 +5,7 @@ import { detectSurfaces } from "../src/scanner/detect.js";
 import { walkProject } from "../src/scanner/walk.js";
 import { loadRules, runRules } from "../src/rules/engine.js";
 import { scanProject } from "../src/scanner/scan.js";
+import { tempPath } from "./temp-path.js";
 
 describe("rule engine", () => {
   it("runs built-in YAML rules over normalized manifest objects", async () => {
@@ -387,21 +388,24 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MEMORY-005")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MEMORY-006")).toBe(true);
     expect(findings.some((finding) => finding.severity === "critical")).toBe(true);
-    expect(findings.some((finding) => finding.confidence === "very_high")).toBe(true);
-    expect(findings.find((finding) => finding.rule_id === "AGENTCSP-RUNTIME-001")?.confidence).toBe("very_high");
+    expect(findings.some((finding) => finding.confidence === "medium")).toBe(true);
+    expect(findings.some((finding) => finding.confidence === "very_high")).toBe(false);
+    expect(findings.some((finding) => finding.support_tier === "heuristic")).toBe(true);
+    expect(findings.some((finding) => finding.support_tier === "structured")).toBe(true);
+    expect(findings.find((finding) => finding.rule_id === "AGENTCSP-RUNTIME-001")?.confidence).toBe("high");
     const runtimeMcpFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-003");
     expect(runtimeMcpFindings.map((finding) => finding.matched_object.path).sort()).toEqual([
       ".claude/settings.json",
       ".codex/config.toml"
     ]);
-    expect(runtimeMcpFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(runtimeMcpFindings.every((finding) => finding.confidence === "high")).toBe(true);
     const runtimeAutoApprovedFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-004");
     expect(runtimeAutoApprovedFindings).toHaveLength(1);
     expect(runtimeAutoApprovedFindings[0]?.matched_object.path).toBe(".claude/settings.json");
     expect(runtimeAutoApprovedFindings[0]?.matched_object.metadata.permission_allowlist).toEqual(
       expect.arrayContaining(["Bash", "WebFetch", "mcp:filesystem-admin"])
     );
-    expect(runtimeAutoApprovedFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeAutoApprovedFindings[0]?.confidence).toBe("high");
     expect(JSON.stringify(runtimeAutoApprovedFindings[0])).not.toContain("npm run deploy");
     expect(JSON.stringify(runtimeAutoApprovedFindings[0])).not.toContain("${ANTHROPIC_API_KEY}");
     const runtimeAutoApprovedReleaseFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-005");
@@ -410,7 +414,7 @@ describe("rule engine", () => {
     expect(runtimeAutoApprovedReleaseFindings[0]?.matched_object.metadata.referenced_release_package_scripts).toEqual([
       "package-script:deploy"
     ]);
-    expect(runtimeAutoApprovedReleaseFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeAutoApprovedReleaseFindings[0]?.confidence).toBe("high");
     expect(JSON.stringify(runtimeAutoApprovedReleaseFindings[0])).not.toContain("npm run deploy");
     const runtimeDestructiveMcpFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-006");
     expect(runtimeDestructiveMcpFindings).toHaveLength(1);
@@ -418,7 +422,7 @@ describe("rule engine", () => {
     expect(runtimeDestructiveMcpFindings[0]?.matched_object.metadata.auto_approved_destructive_mcp_tool_refs).toEqual([
       "mcp:filesystem_admin/delete_file"
     ]);
-    expect(runtimeDestructiveMcpFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeDestructiveMcpFindings[0]?.confidence).toBe("high");
     expect(JSON.stringify(runtimeDestructiveMcpFindings[0])).not.toContain("mcp__filesystem-admin__delete_file");
     const runtimeBroadWebFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-007");
     expect(runtimeBroadWebFindings).toHaveLength(1);
@@ -427,7 +431,7 @@ describe("rule engine", () => {
     expect(runtimeBroadWebFindings[0]?.matched_object.metadata.auto_approved_network_scope_kinds).toEqual([
       "wildcard_domain"
     ]);
-    expect(runtimeBroadWebFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeBroadWebFindings[0]?.confidence).toBe("medium");
     expect(JSON.stringify(runtimeBroadWebFindings[0])).not.toContain("domain:*");
     const runtimeTelemetryFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-008");
     expect(runtimeTelemetryFindings).toHaveLength(1);
@@ -439,7 +443,7 @@ describe("rule engine", () => {
       ai_telemetry_redaction_disabled: true
     });
     expect(runtimeTelemetryFindings[0]?.severity).toBe("critical");
-    expect(runtimeTelemetryFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeTelemetryFindings[0]?.confidence).toBe("medium");
     expect(runtimeTelemetryFindings[0]?.recommended_control).toBe("redact");
     expect(JSON.stringify(runtimeTelemetryFindings[0])).not.toContain("${LANGSMITH_API_KEY}");
     expect(JSON.stringify(runtimeTelemetryFindings[0])).not.toContain("api.smith.langchain.com");
@@ -457,7 +461,7 @@ describe("rule engine", () => {
       ai_telemetry_approval_required: false
     });
     expect(runtimePublicTelemetryFindings[0]?.severity).toBe("critical");
-    expect(runtimePublicTelemetryFindings[0]?.confidence).toBe("very_high");
+    expect(runtimePublicTelemetryFindings[0]?.confidence).toBe("medium");
     expect(runtimePublicTelemetryFindings[0]?.recommended_control).toBe("redact");
     expect(JSON.stringify(runtimePublicTelemetryFindings[0])).not.toContain("${LANGSMITH_API_KEY}");
     expect(JSON.stringify(runtimePublicTelemetryFindings[0])).not.toContain("api.smith.langchain.com");
@@ -490,7 +494,7 @@ describe("rule engine", () => {
       "training_dataset"
     ]);
     expect(runtimeTelemetryReplayFindings[0]?.severity).toBe("critical");
-    expect(runtimeTelemetryReplayFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeTelemetryReplayFindings[0]?.confidence).toBe("medium");
     expect(runtimeTelemetryReplayFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimeTelemetryReplayFindings[0])).not.toContain("${LANGSMITH_API_KEY}");
     expect(JSON.stringify(runtimeTelemetryReplayFindings[0])).not.toContain("api.smith.langchain.com");
@@ -523,7 +527,7 @@ describe("rule engine", () => {
       "tool_output"
     ]);
     expect(runtimeArtifactExportFindings[0]?.severity).toBe("critical");
-    expect(runtimeArtifactExportFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeArtifactExportFindings[0]?.confidence).toBe("medium");
     expect(runtimeArtifactExportFindings[0]?.recommended_control).toBe("redact");
     expect(JSON.stringify(runtimeArtifactExportFindings[0])).not.toContain("${ARTIFACT_EXPORT_TOKEN}");
     expect(JSON.stringify(runtimeArtifactExportFindings[0])).not.toContain("agentcsp-demo-public-artifacts");
@@ -561,7 +565,7 @@ describe("rule engine", () => {
       "tool_output"
     ]);
     expect(runtimeArtifactRetentionFindings[0]?.severity).toBe("critical");
-    expect(runtimeArtifactRetentionFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeArtifactRetentionFindings[0]?.confidence).toBe("medium");
     expect(runtimeArtifactRetentionFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimeArtifactRetentionFindings[0])).not.toContain("${ARTIFACT_EXPORT_TOKEN}");
     expect(JSON.stringify(runtimeArtifactRetentionFindings[0])).not.toContain("agentcsp-demo-public-artifacts");
@@ -592,7 +596,7 @@ describe("rule engine", () => {
       "tool_output"
     ]);
     expect(runtimeWebhookEgressFindings[0]?.severity).toBe("critical");
-    expect(runtimeWebhookEgressFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeWebhookEgressFindings[0]?.confidence).toBe("medium");
     expect(runtimeWebhookEgressFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeWebhookEgressFindings[0])).not.toContain("${AGENT_WEBHOOK_TOKEN}");
     expect(JSON.stringify(runtimeWebhookEgressFindings[0])).not.toContain("callback.agentcsp-demo.example.invalid");
@@ -631,7 +635,7 @@ describe("rule engine", () => {
       "tool_output"
     ]);
     expect(runtimeWebhookRetryFindings[0]?.severity).toBe("critical");
-    expect(runtimeWebhookRetryFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeWebhookRetryFindings[0]?.confidence).toBe("medium");
     expect(runtimeWebhookRetryFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimeWebhookRetryFindings[0])).not.toContain("${AGENT_WEBHOOK_TOKEN}");
     expect(JSON.stringify(runtimeWebhookRetryFindings[0])).not.toContain("Authorization");
@@ -669,7 +673,7 @@ describe("rule engine", () => {
       "sys_admin"
     ]);
     expect(runtimeContainerFindings[0]?.severity).toBe("critical");
-    expect(runtimeContainerFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeContainerFindings[0]?.confidence).toBe("medium");
     expect(runtimeContainerFindings[0]?.recommended_control).toBe("deny");
     expect(JSON.stringify(runtimeContainerFindings[0])).not.toContain("${AGENT_CONTAINER_TOKEN}");
     expect(JSON.stringify(runtimeContainerFindings[0])).not.toContain("agentcsp-demo/support-agent");
@@ -729,7 +733,7 @@ describe("rule engine", () => {
     expect(runtimeContainerHostRootFindings[0]?.matched_object.secret_exposure).toBe(true);
     expect(runtimeContainerHostRootFindings[0]?.matched_object.untrusted_to_privileged).toBe(true);
     expect(runtimeContainerHostRootFindings[0]?.severity).toBe("critical");
-    expect(runtimeContainerHostRootFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeContainerHostRootFindings[0]?.confidence).toBe("medium");
     expect(runtimeContainerHostRootFindings[0]?.recommended_control).toBe("deny");
     expect(JSON.stringify(runtimeContainerHostRootFindings[0])).not.toContain("${AGENT_CONTAINER_TOKEN}");
     expect(JSON.stringify(runtimeContainerHostRootFindings[0])).not.toContain("${OPENAI_API_KEY}");
@@ -759,7 +763,7 @@ describe("rule engine", () => {
       "workspace_mount"
     ]);
     expect(runtimeCodeInterpreterFindings[0]?.severity).toBe("critical");
-    expect(runtimeCodeInterpreterFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeCodeInterpreterFindings[0]?.confidence).toBe("medium");
     expect(runtimeCodeInterpreterFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeCodeInterpreterFindings[0])).not.toContain("${CODE_INTERPRETER_TOKEN}");
     expect(JSON.stringify(runtimeCodeInterpreterFindings[0])).not.toContain("python3");
@@ -796,7 +800,7 @@ describe("rule engine", () => {
       runtimeCodeInterpreterExfiltrationFindings[0]?.matched_object.metadata.agent_code_interpreter_mount_kinds
     ).toEqual(["credential_path", "host_path", "workspace_mount"]);
     expect(runtimeCodeInterpreterExfiltrationFindings[0]?.severity).toBe("critical");
-    expect(runtimeCodeInterpreterExfiltrationFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeCodeInterpreterExfiltrationFindings[0]?.confidence).toBe("medium");
     expect(runtimeCodeInterpreterExfiltrationFindings[0]?.recommended_control).toBe("deny");
     expect(JSON.stringify(runtimeCodeInterpreterExfiltrationFindings[0])).not.toContain("${CODE_INTERPRETER_TOKEN}");
     expect(JSON.stringify(runtimeCodeInterpreterExfiltrationFindings[0])).not.toContain("${OPENAI_API_KEY}");
@@ -831,7 +835,7 @@ describe("rule engine", () => {
       "tool_output"
     ]);
     expect(runtimeTrainingDatasetFindings[0]?.severity).toBe("critical");
-    expect(runtimeTrainingDatasetFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeTrainingDatasetFindings[0]?.confidence).toBe("medium");
     expect(runtimeTrainingDatasetFindings[0]?.recommended_control).toBe("redact");
     expect(JSON.stringify(runtimeTrainingDatasetFindings[0])).not.toContain("${FINE_TUNE_TOKEN}");
     expect(JSON.stringify(runtimeTrainingDatasetFindings[0])).not.toContain("api.openai.example.invalid");
@@ -872,7 +876,7 @@ describe("rule engine", () => {
       "tool_output"
     ]);
     expect(runtimeTrainingRetentionFindings[0]?.severity).toBe("critical");
-    expect(runtimeTrainingRetentionFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeTrainingRetentionFindings[0]?.confidence).toBe("medium");
     expect(runtimeTrainingRetentionFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimeTrainingRetentionFindings[0])).not.toContain("${FINE_TUNE_TOKEN}");
     expect(JSON.stringify(runtimeTrainingRetentionFindings[0])).not.toContain("${OPENAI_API_KEY}");
@@ -911,7 +915,7 @@ describe("rule engine", () => {
       "tool_output"
     ]);
     expect(runtimeFeedbackPipelineFindings[0]?.severity).toBe("critical");
-    expect(runtimeFeedbackPipelineFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeFeedbackPipelineFindings[0]?.confidence).toBe("medium");
     expect(runtimeFeedbackPipelineFindings[0]?.recommended_control).toBe("redact");
     expect(JSON.stringify(runtimeFeedbackPipelineFindings[0])).not.toContain("${FEEDBACK_PIPELINE_TOKEN}");
     expect(JSON.stringify(runtimeFeedbackPipelineFindings[0])).not.toContain("feedback.agentcsp-demo.example.invalid");
@@ -961,7 +965,7 @@ describe("rule engine", () => {
       "tool_output"
     ]);
     expect(runtimeFeedbackAutoPromotionFindings[0]?.severity).toBe("critical");
-    expect(runtimeFeedbackAutoPromotionFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeFeedbackAutoPromotionFindings[0]?.confidence).toBe("medium");
     expect(runtimeFeedbackAutoPromotionFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimeFeedbackAutoPromotionFindings[0])).not.toContain("${FEEDBACK_PIPELINE_TOKEN}");
     expect(JSON.stringify(runtimeFeedbackAutoPromotionFindings[0])).not.toContain("feedback.agentcsp-demo.example.invalid");
@@ -1005,7 +1009,7 @@ describe("rule engine", () => {
       "tool_call"
     ]);
     expect(runtimeTaskQueueFindings[0]?.severity).toBe("critical");
-    expect(runtimeTaskQueueFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeTaskQueueFindings[0]?.confidence).toBe("medium");
     expect(runtimeTaskQueueFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeTaskQueueFindings[0])).not.toContain("${AGENT_TASK_QUEUE_URL}");
     expect(JSON.stringify(runtimeTaskQueueFindings[0])).not.toContain("customer-support-agent-jobs");
@@ -1043,7 +1047,7 @@ describe("rule engine", () => {
       "tool_output"
     ]);
     expect(runtimeTaskQueueReplayFindings[0]?.severity).toBe("critical");
-    expect(runtimeTaskQueueReplayFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeTaskQueueReplayFindings[0]?.confidence).toBe("medium");
     expect(runtimeTaskQueueReplayFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimeTaskQueueReplayFindings[0])).not.toContain("${AGENT_TASK_QUEUE_URL}");
     expect(JSON.stringify(runtimeTaskQueueReplayFindings[0])).not.toContain("customer-support-agent-jobs");
@@ -1080,7 +1084,7 @@ describe("rule engine", () => {
       "tool_output"
     ]);
     expect(runtimePromptCacheFindings[0]?.severity).toBe("critical");
-    expect(runtimePromptCacheFindings[0]?.confidence).toBe("very_high");
+    expect(runtimePromptCacheFindings[0]?.confidence).toBe("medium");
     expect(runtimePromptCacheFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimePromptCacheFindings[0])).not.toContain("${LLM_CACHE_TOKEN}");
     expect(JSON.stringify(runtimePromptCacheFindings[0])).not.toContain("${LLM_CACHE_URL}");
@@ -1107,7 +1111,7 @@ describe("rule engine", () => {
       llm_prompt_cache_approval_required: false
     });
     expect(runtimePromptCacheCrossTenantFindings[0]?.severity).toBe("critical");
-    expect(runtimePromptCacheCrossTenantFindings[0]?.confidence).toBe("very_high");
+    expect(runtimePromptCacheCrossTenantFindings[0]?.confidence).toBe("medium");
     expect(runtimePromptCacheCrossTenantFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimePromptCacheCrossTenantFindings[0])).not.toContain("${LLM_CACHE_TOKEN}");
     expect(JSON.stringify(runtimePromptCacheCrossTenantFindings[0])).not.toContain("${LLM_CACHE_URL}");
@@ -1142,7 +1146,7 @@ describe("rule engine", () => {
       "third_party_model_route"
     ]);
     expect(runtimeModelRouterFindings[0]?.severity).toBe("critical");
-    expect(runtimeModelRouterFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeModelRouterFindings[0]?.confidence).toBe("medium");
     expect(runtimeModelRouterFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeModelRouterFindings[0])).not.toContain("${MODEL_ROUTER_TOKEN}");
     expect(JSON.stringify(runtimeModelRouterFindings[0])).not.toContain("${FALLBACK_MODEL_TOKEN}");
@@ -1185,7 +1189,7 @@ describe("rule engine", () => {
       "third_party_model_route"
     ]);
     expect(runtimeModelRouterOutputRetentionFindings[0]?.severity).toBe("critical");
-    expect(runtimeModelRouterOutputRetentionFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeModelRouterOutputRetentionFindings[0]?.confidence).toBe("medium");
     expect(runtimeModelRouterOutputRetentionFindings[0]?.recommended_control).toBe("redact");
     expect(JSON.stringify(runtimeModelRouterOutputRetentionFindings[0])).not.toContain("${MODEL_ROUTER_TOKEN}");
     expect(JSON.stringify(runtimeModelRouterOutputRetentionFindings[0])).not.toContain("${FALLBACK_MODEL_TOKEN}");
@@ -1222,7 +1226,7 @@ describe("rule engine", () => {
       "tool_output"
     ]);
     expect(runtimeEmbeddingFindings[0]?.severity).toBe("critical");
-    expect(runtimeEmbeddingFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeEmbeddingFindings[0]?.confidence).toBe("medium");
     expect(runtimeEmbeddingFindings[0]?.recommended_control).toBe("redact");
     expect(JSON.stringify(runtimeEmbeddingFindings[0])).not.toContain("${EMBEDDING_API_KEY}");
     expect(JSON.stringify(runtimeEmbeddingFindings[0])).not.toContain("api.openai.example.invalid");
@@ -1266,7 +1270,7 @@ describe("rule engine", () => {
       "tool_output"
     ]);
     expect(runtimeEmbeddingRetentionFindings[0]?.severity).toBe("critical");
-    expect(runtimeEmbeddingRetentionFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeEmbeddingRetentionFindings[0]?.confidence).toBe("medium");
     expect(runtimeEmbeddingRetentionFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimeEmbeddingRetentionFindings[0])).not.toContain("${EMBEDDING_API_KEY}");
     expect(JSON.stringify(runtimeEmbeddingRetentionFindings[0])).not.toContain("api.openai.example.invalid");
@@ -1307,7 +1311,7 @@ describe("rule engine", () => {
       "iac_apply"
     ]);
     expect(runtimeCloudControlPlaneFindings[0]?.severity).toBe("critical");
-    expect(runtimeCloudControlPlaneFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeCloudControlPlaneFindings[0]?.confidence).toBe("medium");
     expect(runtimeCloudControlPlaneFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeCloudControlPlaneFindings[0])).not.toContain("${AWS_ACCESS_KEY_ID}");
     expect(JSON.stringify(runtimeCloudControlPlaneFindings[0])).not.toContain("${AWS_SECRET_ACCESS_KEY}");
@@ -1358,7 +1362,7 @@ describe("rule engine", () => {
       runtimeCloudAutoRemediationFindings[0]?.matched_object.metadata.cloud_control_plane_tool_authority_categories
     ).toEqual(["aws_cli", "iac_apply"]);
     expect(runtimeCloudAutoRemediationFindings[0]?.severity).toBe("critical");
-    expect(runtimeCloudAutoRemediationFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeCloudAutoRemediationFindings[0]?.confidence).toBe("medium");
     expect(runtimeCloudAutoRemediationFindings[0]?.recommended_control).toBe("deny");
     expect(JSON.stringify(runtimeCloudAutoRemediationFindings[0])).not.toContain("${AWS_ACCESS_KEY_ID}");
     expect(JSON.stringify(runtimeCloudAutoRemediationFindings[0])).not.toContain("${AWS_SECRET_ACCESS_KEY}");
@@ -1402,7 +1406,7 @@ describe("rule engine", () => {
       "allow_sensitive_scope"
     ]);
     expect(runtimeAgentCspPolicyFindings[0]?.severity).toBe("critical");
-    expect(runtimeAgentCspPolicyFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeAgentCspPolicyFindings[0]?.confidence).toBe("medium");
     expect(runtimeAgentCspPolicyFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeAgentCspPolicyFindings[0])).not.toContain("rag/**");
     expect(JSON.stringify(runtimeAgentCspPolicyFindings[0])).not.toContain("allow-critical-legacy-agent");
@@ -1445,7 +1449,7 @@ describe("rule engine", () => {
     ]);
     expect(runtimeAgentCspPolicyCriticalBypassFindings[0]?.matched_object.actions).toEqual(["approve", "read", "write"]);
     expect(runtimeAgentCspPolicyCriticalBypassFindings[0]?.severity).toBe("critical");
-    expect(runtimeAgentCspPolicyCriticalBypassFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeAgentCspPolicyCriticalBypassFindings[0]?.confidence).toBe("medium");
     expect(runtimeAgentCspPolicyCriticalBypassFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeAgentCspPolicyCriticalBypassFindings[0])).not.toContain("rag/**");
     expect(JSON.stringify(runtimeAgentCspPolicyCriticalBypassFindings[0])).not.toContain("**/legacy/**");
@@ -1479,7 +1483,7 @@ describe("rule engine", () => {
       "tool_instruction"
     ]);
     expect(runtimePromptRegistryFindings[0]?.severity).toBe("critical");
-    expect(runtimePromptRegistryFindings[0]?.confidence).toBe("very_high");
+    expect(runtimePromptRegistryFindings[0]?.confidence).toBe("medium");
     expect(runtimePromptRegistryFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimePromptRegistryFindings[0])).not.toContain("${PROMPT_REGISTRY_TOKEN}");
     expect(JSON.stringify(runtimePromptRegistryFindings[0])).not.toContain("prompts.agentcsp-demo.example.invalid");
@@ -1535,7 +1539,7 @@ describe("rule engine", () => {
       "write"
     ]);
     expect(runtimePromptRegistryPersistentEgressFindings[0]?.severity).toBe("critical");
-    expect(runtimePromptRegistryPersistentEgressFindings[0]?.confidence).toBe("very_high");
+    expect(runtimePromptRegistryPersistentEgressFindings[0]?.confidence).toBe("medium");
     expect(runtimePromptRegistryPersistentEgressFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimePromptRegistryPersistentEgressFindings[0])).not.toContain("${PROMPT_REGISTRY_TOKEN}");
     expect(JSON.stringify(runtimePromptRegistryPersistentEgressFindings[0])).not.toContain(
@@ -1591,7 +1595,7 @@ describe("rule engine", () => {
       "secret_manager_access"
     ]);
     expect(runtimeRemoteInstructionFindings[0]?.severity).toBe("critical");
-    expect(runtimeRemoteInstructionFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeRemoteInstructionFindings[0]?.confidence).toBe("medium");
     expect(runtimeRemoteInstructionFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimeRemoteInstructionFindings[0])).not.toContain("${REMOTE_INSTRUCTION_TOKEN}");
     expect(JSON.stringify(runtimeRemoteInstructionFindings[0])).not.toContain("instructions.agentcsp-demo.example.invalid");
@@ -1637,7 +1641,7 @@ describe("rule engine", () => {
     expect(runtimeRemoteInstructionSecretToolFindings[0]?.matched_object.secret_exposure).toBe(true);
     expect(runtimeRemoteInstructionSecretToolFindings[0]?.matched_object.untrusted_to_privileged).toBe(true);
     expect(runtimeRemoteInstructionSecretToolFindings[0]?.severity).toBe("critical");
-    expect(runtimeRemoteInstructionSecretToolFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeRemoteInstructionSecretToolFindings[0]?.confidence).toBe("medium");
     expect(runtimeRemoteInstructionSecretToolFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimeRemoteInstructionSecretToolFindings[0])).not.toContain("${REMOTE_INSTRUCTION_TOKEN}");
     expect(JSON.stringify(runtimeRemoteInstructionSecretToolFindings[0])).not.toContain(
@@ -1702,7 +1706,7 @@ describe("rule engine", () => {
       "tool_call"
     ]);
     expect(runtimeAgentExposureFindings[0]?.severity).toBe("critical");
-    expect(runtimeAgentExposureFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeAgentExposureFindings[0]?.confidence).toBe("medium");
     expect(runtimeAgentExposureFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeAgentExposureFindings[0])).not.toContain("${A2A_AGENT_TOKEN}");
     expect(JSON.stringify(runtimeAgentExposureFindings[0])).not.toContain("support-agent.agentcsp-demo.example.invalid");
@@ -1750,7 +1754,7 @@ describe("rule engine", () => {
       "write"
     ]);
     expect(runtimeAgentCardCallbackSecretFindings[0]?.severity).toBe("critical");
-    expect(runtimeAgentCardCallbackSecretFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeAgentCardCallbackSecretFindings[0]?.confidence).toBe("medium");
     expect(runtimeAgentCardCallbackSecretFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimeAgentCardCallbackSecretFindings[0])).not.toContain("${A2A_AGENT_TOKEN}");
     expect(JSON.stringify(runtimeAgentCardCallbackSecretFindings[0])).not.toContain("support-agent.agentcsp-demo.example.invalid");
@@ -1793,7 +1797,7 @@ describe("rule engine", () => {
       "tool_call"
     ]);
     expect(runtimePublicChatFindings[0]?.severity).toBe("critical");
-    expect(runtimePublicChatFindings[0]?.confidence).toBe("very_high");
+    expect(runtimePublicChatFindings[0]?.confidence).toBe("medium");
     expect(runtimePublicChatFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimePublicChatFindings[0])).not.toContain("${PUBLIC_CHAT_AGENT_TOKEN}");
     expect(JSON.stringify(runtimePublicChatFindings[0])).not.toContain("support.example.invalid");
@@ -1842,7 +1846,7 @@ describe("rule engine", () => {
       "tool_call"
     ]);
     expect(runtimePublicChatUploadFindings[0]?.severity).toBe("critical");
-    expect(runtimePublicChatUploadFindings[0]?.confidence).toBe("very_high");
+    expect(runtimePublicChatUploadFindings[0]?.confidence).toBe("medium");
     expect(runtimePublicChatUploadFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimePublicChatUploadFindings[0])).not.toContain("${PUBLIC_CHAT_AGENT_TOKEN}");
     expect(JSON.stringify(runtimePublicChatUploadFindings[0])).not.toContain("support.example.invalid");
@@ -1898,7 +1902,7 @@ describe("rule engine", () => {
       "tool_call"
     ]);
     expect(runtimePublicChatUploadParserFindings[0]?.severity).toBe("critical");
-    expect(runtimePublicChatUploadParserFindings[0]?.confidence).toBe("very_high");
+    expect(runtimePublicChatUploadParserFindings[0]?.confidence).toBe("medium");
     expect(runtimePublicChatUploadParserFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimePublicChatUploadParserFindings[0])).not.toContain("${PUBLIC_CHAT_AGENT_TOKEN}");
     expect(JSON.stringify(runtimePublicChatUploadParserFindings[0])).not.toContain("support.example.invalid");
@@ -1943,7 +1947,7 @@ describe("rule engine", () => {
       "tool_call"
     ]);
     expect(runtimeDebugConsoleFindings[0]?.severity).toBe("critical");
-    expect(runtimeDebugConsoleFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeDebugConsoleFindings[0]?.confidence).toBe("medium");
     expect(runtimeDebugConsoleFindings[0]?.recommended_control).toBe("deny");
     expect(JSON.stringify(runtimeDebugConsoleFindings[0])).not.toContain("${DEBUG_CONSOLE_TOKEN}");
     expect(JSON.stringify(runtimeDebugConsoleFindings[0])).not.toContain("debug.agentcsp-demo.example.invalid");
@@ -1978,7 +1982,7 @@ describe("rule engine", () => {
       runtimeDebugConsoleImpersonationFindings[0]?.matched_object.metadata.agent_debug_console_tool_authority_categories
     ).toEqual(["database_write", "external_response", "memory_write", "prompt_write", "secret_manager_access", "tool_call"]);
     expect(runtimeDebugConsoleImpersonationFindings[0]?.severity).toBe("critical");
-    expect(runtimeDebugConsoleImpersonationFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeDebugConsoleImpersonationFindings[0]?.confidence).toBe("medium");
     expect(runtimeDebugConsoleImpersonationFindings[0]?.recommended_control).toBe("deny");
     expect(JSON.stringify(runtimeDebugConsoleImpersonationFindings[0])).not.toContain("${DEBUG_CONSOLE_TOKEN}");
     expect(JSON.stringify(runtimeDebugConsoleImpersonationFindings[0])).not.toContain(
@@ -2017,7 +2021,7 @@ describe("rule engine", () => {
       agent_response_exposure_approval_required: false
     });
     expect(runtimeResponseStreamFindings[0]?.severity).toBe("critical");
-    expect(runtimeResponseStreamFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeResponseStreamFindings[0]?.confidence).toBe("medium");
     expect(runtimeResponseStreamFindings[0]?.recommended_control).toBe("redact");
     expect(JSON.stringify(runtimeResponseStreamFindings[0])).not.toContain("${RESPONSE_STREAM_TOKEN}");
     expect(JSON.stringify(runtimeResponseStreamFindings[0])).not.toContain("stream.agentcsp-demo.example.invalid");
@@ -2050,7 +2054,7 @@ describe("rule engine", () => {
       agent_response_exposure_approval_required: false
     });
     expect(runtimeResponseStreamPromptBoundaryFindings[0]?.severity).toBe("critical");
-    expect(runtimeResponseStreamPromptBoundaryFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeResponseStreamPromptBoundaryFindings[0]?.confidence).toBe("medium");
     expect(runtimeResponseStreamPromptBoundaryFindings[0]?.recommended_control).toBe("deny");
     expect(JSON.stringify(runtimeResponseStreamPromptBoundaryFindings[0])).not.toContain("${RESPONSE_STREAM_TOKEN}");
     expect(JSON.stringify(runtimeResponseStreamPromptBoundaryFindings[0])).not.toContain(
@@ -2094,7 +2098,7 @@ describe("rule engine", () => {
       "tool_call"
     ]);
     expect(runtimeActionRouterFindings[0]?.severity).toBe("critical");
-    expect(runtimeActionRouterFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeActionRouterFindings[0]?.confidence).toBe("medium");
     expect(runtimeActionRouterFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeActionRouterFindings[0])).not.toContain("${ACTION_ROUTER_TOKEN}");
     expect(JSON.stringify(runtimeActionRouterFindings[0])).not.toContain("untrusted_customer_message");
@@ -2153,7 +2157,7 @@ describe("rule engine", () => {
     expect(runtimeActionRouterOpenSchemaFindings[0]?.matched_object.secret_exposure).toBe(true);
     expect(runtimeActionRouterOpenSchemaFindings[0]?.matched_object.untrusted_to_privileged).toBe(true);
     expect(runtimeActionRouterOpenSchemaFindings[0]?.severity).toBe("critical");
-    expect(runtimeActionRouterOpenSchemaFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeActionRouterOpenSchemaFindings[0]?.confidence).toBe("medium");
     expect(runtimeActionRouterOpenSchemaFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimeActionRouterOpenSchemaFindings[0])).not.toContain("${ACTION_ROUTER_TOKEN}");
     expect(JSON.stringify(runtimeActionRouterOpenSchemaFindings[0])).not.toContain("untrusted_customer_message");
@@ -2193,7 +2197,7 @@ describe("rule engine", () => {
       "remote_agent_card"
     ]);
     expect(runtimeAgentFederationFindings[0]?.severity).toBe("critical");
-    expect(runtimeAgentFederationFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeAgentFederationFindings[0]?.confidence).toBe("medium");
     expect(runtimeAgentFederationFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeAgentFederationFindings[0])).not.toContain("${A2A_FEDERATION_TOKEN}");
     expect(JSON.stringify(runtimeAgentFederationFindings[0])).not.toContain("agents.agentcsp-demo.example.invalid");
@@ -2241,7 +2245,7 @@ describe("rule engine", () => {
     expect(runtimeAgentFederationCredentialFindings[0]?.matched_object.secret_exposure).toBe(true);
     expect(runtimeAgentFederationCredentialFindings[0]?.matched_object.untrusted_to_privileged).toBe(true);
     expect(runtimeAgentFederationCredentialFindings[0]?.severity).toBe("critical");
-    expect(runtimeAgentFederationCredentialFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeAgentFederationCredentialFindings[0]?.confidence).toBe("medium");
     expect(runtimeAgentFederationCredentialFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimeAgentFederationCredentialFindings[0])).not.toContain("${A2A_FEDERATION_TOKEN}");
     expect(JSON.stringify(runtimeAgentFederationCredentialFindings[0])).not.toContain(
@@ -2301,7 +2305,7 @@ describe("rule engine", () => {
       "write_scope"
     ]);
     expect(runtimeMcpAuthorizationFindings[0]?.severity).toBe("critical");
-    expect(runtimeMcpAuthorizationFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeMcpAuthorizationFindings[0]?.confidence).toBe("medium");
     expect(runtimeMcpAuthorizationFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeMcpAuthorizationFindings[0])).not.toContain("${MCP_OAUTH_CLIENT_SECRET}");
     expect(JSON.stringify(runtimeMcpAuthorizationFindings[0])).not.toContain("oauth-mcp.agentcsp-demo.example.invalid");
@@ -2346,7 +2350,7 @@ describe("rule engine", () => {
     ]);
     expect(runtimeMcpOauthReplayFindings[0]?.matched_object.actions).toEqual(["call", "read", "remember", "send", "write"]);
     expect(runtimeMcpOauthReplayFindings[0]?.severity).toBe("critical");
-    expect(runtimeMcpOauthReplayFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeMcpOauthReplayFindings[0]?.confidence).toBe("medium");
     expect(runtimeMcpOauthReplayFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimeMcpOauthReplayFindings[0])).not.toContain("${MCP_OAUTH_CLIENT_SECRET}");
     expect(JSON.stringify(runtimeMcpOauthReplayFindings[0])).not.toContain("oauth-mcp.agentcsp-demo.example.invalid");
@@ -2398,7 +2402,7 @@ describe("rule engine", () => {
       "secret"
     ]);
     expect(runtimeMcpOauthRedirectFindings[0]?.severity).toBe("critical");
-    expect(runtimeMcpOauthRedirectFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeMcpOauthRedirectFindings[0]?.confidence).toBe("medium");
     expect(runtimeMcpOauthRedirectFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimeMcpOauthRedirectFindings[0])).not.toContain("${MCP_OAUTH_CLIENT_SECRET}");
     expect(JSON.stringify(runtimeMcpOauthRedirectFindings[0])).not.toContain("oauth-mcp.agentcsp-demo.example.invalid");
@@ -2451,7 +2455,7 @@ describe("rule engine", () => {
       "secret"
     ]);
     expect(runtimeMcpOauthDeviceFlowFindings[0]?.severity).toBe("critical");
-    expect(runtimeMcpOauthDeviceFlowFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeMcpOauthDeviceFlowFindings[0]?.confidence).toBe("medium");
     expect(runtimeMcpOauthDeviceFlowFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimeMcpOauthDeviceFlowFindings[0])).not.toContain("${MCP_OAUTH_CLIENT_SECRET}");
     expect(JSON.stringify(runtimeMcpOauthDeviceFlowFindings[0])).not.toContain("oauth-mcp.agentcsp-demo.example.invalid");
@@ -2494,7 +2498,7 @@ describe("rule engine", () => {
       "plaintext_protected_resource_metadata"
     ]);
     expect(runtimeMcpOauthPlaintextFindings[0]?.severity).toBe("critical");
-    expect(runtimeMcpOauthPlaintextFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeMcpOauthPlaintextFindings[0]?.confidence).toBe("medium");
     expect(runtimeMcpOauthPlaintextFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimeMcpOauthPlaintextFindings[0])).not.toContain("${MCP_OAUTH_CLIENT_SECRET}");
     expect(JSON.stringify(runtimeMcpOauthPlaintextFindings[0])).not.toContain("oauth-mcp.agentcsp-demo.example.invalid");
@@ -2538,7 +2542,7 @@ describe("rule engine", () => {
       "http_tarball"
     ]);
     expect(supplyChainFindings[0]?.severity).toBe("critical");
-    expect(supplyChainFindings[0]?.confidence).toBe("very_high");
+    expect(supplyChainFindings[0]?.confidence).toBe("medium");
     expect(supplyChainFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(supplyChainFindings[0])).not.toContain("${AGENT_EXTENSION_TOKEN}");
     expect(JSON.stringify(supplyChainFindings[0])).not.toContain("@agentcsp-demo/remote-rag-plugin");
@@ -2579,7 +2583,7 @@ describe("rule engine", () => {
       "http_tarball"
     ]);
     expect(supplyChainBootstrapFindings[0]?.severity).toBe("critical");
-    expect(supplyChainBootstrapFindings[0]?.confidence).toBe("very_high");
+    expect(supplyChainBootstrapFindings[0]?.confidence).toBe("medium");
     expect(supplyChainBootstrapFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(supplyChainBootstrapFindings[0])).not.toContain("${AGENT_EXTENSION_TOKEN}");
     expect(JSON.stringify(supplyChainBootstrapFindings[0])).not.toContain("@agentcsp-demo/remote-rag-plugin");
@@ -2614,7 +2618,7 @@ describe("rule engine", () => {
       "host_path"
     ]);
     expect(supplyChainDeploymentFindings[0]?.severity).toBe("critical");
-    expect(supplyChainDeploymentFindings[0]?.confidence).toBe("very_high");
+    expect(supplyChainDeploymentFindings[0]?.confidence).toBe("medium");
     expect(supplyChainDeploymentFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(supplyChainDeploymentFindings[0])).not.toContain("${AGENT_DEPLOY_TOKEN}");
     expect(JSON.stringify(supplyChainDeploymentFindings[0])).not.toContain("ghcr.io/agentcsp-demo/support-agent");
@@ -2648,7 +2652,7 @@ describe("rule engine", () => {
       "host_path"
     ]);
     expect(runtimeDeploymentHostEscapeFindings[0]?.severity).toBe("critical");
-    expect(runtimeDeploymentHostEscapeFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeDeploymentHostEscapeFindings[0]?.confidence).toBe("medium");
     expect(runtimeDeploymentHostEscapeFindings[0]?.recommended_control).toBe("deny");
     expect(JSON.stringify(runtimeDeploymentHostEscapeFindings[0])).not.toContain("${AGENT_DEPLOY_TOKEN}");
     expect(JSON.stringify(runtimeDeploymentHostEscapeFindings[0])).not.toContain("${OPENAI_API_KEY}");
@@ -2674,7 +2678,7 @@ describe("rule engine", () => {
       ai_model_redaction_disabled: true
     });
     expect(runtimeModelEndpointFindings[0]?.severity).toBe("critical");
-    expect(runtimeModelEndpointFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeModelEndpointFindings[0]?.confidence).toBe("medium");
     expect(runtimeModelEndpointFindings[0]?.recommended_control).toBe("deny");
     expect(JSON.stringify(runtimeModelEndpointFindings[0])).not.toContain("${OPENAI_API_KEY}");
     expect(JSON.stringify(runtimeModelEndpointFindings[0])).not.toContain("llm-gateway.example.invalid");
@@ -2703,7 +2707,7 @@ describe("rule engine", () => {
       ai_model_approval_required: false
     });
     expect(runtimeModelGatewayLoggingFindings[0]?.severity).toBe("critical");
-    expect(runtimeModelGatewayLoggingFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeModelGatewayLoggingFindings[0]?.confidence).toBe("medium");
     expect(runtimeModelGatewayLoggingFindings[0]?.recommended_control).toBe("redact");
     expect(JSON.stringify(runtimeModelGatewayLoggingFindings[0])).not.toContain("${OPENAI_API_KEY}");
     expect(JSON.stringify(runtimeModelGatewayLoggingFindings[0])).not.toContain("llm-gateway.example.invalid");
@@ -2723,7 +2727,7 @@ describe("rule engine", () => {
       ai_model_approval_required: false
     });
     expect(runtimePublicModelGatewayFindings[0]?.severity).toBe("critical");
-    expect(runtimePublicModelGatewayFindings[0]?.confidence).toBe("very_high");
+    expect(runtimePublicModelGatewayFindings[0]?.confidence).toBe("medium");
     expect(runtimePublicModelGatewayFindings[0]?.recommended_control).toBe("deny");
     expect(JSON.stringify(runtimePublicModelGatewayFindings[0])).not.toContain("${PUBLIC_MODEL_GATEWAY_TOKEN}");
     expect(JSON.stringify(runtimePublicModelGatewayFindings[0])).not.toContain("model-gateway.agentcsp-demo.example.invalid");
@@ -2770,7 +2774,7 @@ describe("rule engine", () => {
     expect(runtimePublicModelGatewayAutoToolFindings[0]?.matched_object.secret_exposure).toBe(true);
     expect(runtimePublicModelGatewayAutoToolFindings[0]?.matched_object.untrusted_to_privileged).toBe(true);
     expect(runtimePublicModelGatewayAutoToolFindings[0]?.severity).toBe("critical");
-    expect(runtimePublicModelGatewayAutoToolFindings[0]?.confidence).toBe("very_high");
+    expect(runtimePublicModelGatewayAutoToolFindings[0]?.confidence).toBe("medium");
     expect(runtimePublicModelGatewayAutoToolFindings[0]?.recommended_control).toBe("deny");
     expect(JSON.stringify(runtimePublicModelGatewayAutoToolFindings[0])).not.toContain("${PUBLIC_MODEL_GATEWAY_TOKEN}");
     expect(JSON.stringify(runtimePublicModelGatewayAutoToolFindings[0])).not.toContain(
@@ -2802,7 +2806,7 @@ describe("rule engine", () => {
       database_approval_required: false
     });
     expect(runtimeDatabaseFindings[0]?.severity).toBe("critical");
-    expect(runtimeDatabaseFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeDatabaseFindings[0]?.confidence).toBe("medium");
     expect(runtimeDatabaseFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeDatabaseFindings[0])).not.toContain("${SUPPORT_DB_URL}");
     expect(JSON.stringify(runtimeDatabaseFindings[0])).not.toContain("${SUPPORT_DB_PASSWORD}");
@@ -2828,7 +2832,7 @@ describe("rule engine", () => {
       "database_host"
     ]);
     expect(runtimeDatabaseDeleteFindings[0]?.severity).toBe("critical");
-    expect(runtimeDatabaseDeleteFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeDatabaseDeleteFindings[0]?.confidence).toBe("medium");
     expect(runtimeDatabaseDeleteFindings[0]?.recommended_control).toBe("deny");
     expect(JSON.stringify(runtimeDatabaseDeleteFindings[0])).not.toContain("${SUPPORT_DB_URL}");
     expect(JSON.stringify(runtimeDatabaseDeleteFindings[0])).not.toContain("${SUPPORT_DB_PASSWORD}");
@@ -2853,7 +2857,7 @@ describe("rule engine", () => {
       browser_path_references_redacted: true
     });
     expect(runtimeBrowserSessionFindings[0]?.severity).toBe("critical");
-    expect(runtimeBrowserSessionFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeBrowserSessionFindings[0]?.confidence).toBe("medium");
     expect(runtimeBrowserSessionFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeBrowserSessionFindings[0])).not.toContain("${BROWSER_SESSION_TOKEN}");
     expect(JSON.stringify(runtimeBrowserSessionFindings[0])).not.toContain(".browser/support-profile");
@@ -2871,7 +2875,7 @@ describe("rule engine", () => {
       browser_session_storage: true
     });
     expect(runtimeBrowserDebugFindings[0]?.severity).toBe("critical");
-    expect(runtimeBrowserDebugFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeBrowserDebugFindings[0]?.confidence).toBe("medium");
     expect(runtimeBrowserDebugFindings[0]?.recommended_control).toBe("deny");
     expect(JSON.stringify(runtimeBrowserDebugFindings[0])).not.toContain("${BROWSER_SESSION_TOKEN}");
     expect(JSON.stringify(runtimeBrowserDebugFindings[0])).not.toContain(".browser/support-profile");
@@ -2902,7 +2906,7 @@ describe("rule engine", () => {
       "privileged_browser_extension"
     ]);
     expect(runtimeBrowserExtensionFindings[0]?.severity).toBe("critical");
-    expect(runtimeBrowserExtensionFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeBrowserExtensionFindings[0]?.confidence).toBe("medium");
     expect(runtimeBrowserExtensionFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimeBrowserExtensionFindings[0])).not.toContain("${BROWSER_SESSION_TOKEN}");
     expect(JSON.stringify(runtimeBrowserExtensionFindings[0])).not.toContain(".browser/extensions/password-manager");
@@ -2929,7 +2933,7 @@ describe("rule engine", () => {
       browser_approval_required: false
     });
     expect(runtimeBrowserFileTransferFindings[0]?.severity).toBe("critical");
-    expect(runtimeBrowserFileTransferFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeBrowserFileTransferFindings[0]?.confidence).toBe("medium");
     expect(runtimeBrowserFileTransferFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeBrowserFileTransferFindings[0])).not.toContain("${BROWSER_SESSION_TOKEN}");
     expect(JSON.stringify(runtimeBrowserFileTransferFindings[0])).not.toContain(".browser/downloads/customer-exports");
@@ -2959,7 +2963,7 @@ describe("rule engine", () => {
       browser_approval_required: false
     });
     expect(runtimeBrowserDownloadParserFindings[0]?.severity).toBe("critical");
-    expect(runtimeBrowserDownloadParserFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeBrowserDownloadParserFindings[0]?.confidence).toBe("medium");
     expect(runtimeBrowserDownloadParserFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimeBrowserDownloadParserFindings[0])).not.toContain("${BROWSER_SESSION_TOKEN}");
     expect(JSON.stringify(runtimeBrowserDownloadParserFindings[0])).not.toContain(".browser/support-profile");
@@ -2996,7 +3000,7 @@ describe("rule engine", () => {
       "read_scope"
     ]);
     expect(runtimeSaasConnectorFindings[0]?.severity).toBe("critical");
-    expect(runtimeSaasConnectorFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeSaasConnectorFindings[0]?.confidence).toBe("medium");
     expect(runtimeSaasConnectorFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeSaasConnectorFindings[0])).not.toContain("${CUSTOMER_SUCCESS_SLACK_BOT_TOKEN}");
     expect(JSON.stringify(runtimeSaasConnectorFindings[0])).not.toContain("hooks.slack.example.invalid");
@@ -3034,7 +3038,7 @@ describe("rule engine", () => {
       "workspace"
     ]);
     expect(runtimeSaasRecipientBoundaryFindings[0]?.severity).toBe("critical");
-    expect(runtimeSaasRecipientBoundaryFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeSaasRecipientBoundaryFindings[0]?.confidence).toBe("medium");
     expect(runtimeSaasRecipientBoundaryFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeSaasRecipientBoundaryFindings[0])).not.toContain("${CUSTOMER_SUCCESS_SLACK_BOT_TOKEN}");
     expect(JSON.stringify(runtimeSaasRecipientBoundaryFindings[0])).not.toContain("hooks.slack.example.invalid");
@@ -3084,7 +3088,7 @@ describe("rule engine", () => {
     expect(runtimeSaasCustomerPublicationFindings[0]?.matched_object.secret_exposure).toBe(true);
     expect(runtimeSaasCustomerPublicationFindings[0]?.matched_object.untrusted_to_privileged).toBe(true);
     expect(runtimeSaasCustomerPublicationFindings[0]?.severity).toBe("critical");
-    expect(runtimeSaasCustomerPublicationFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeSaasCustomerPublicationFindings[0]?.confidence).toBe("medium");
     expect(runtimeSaasCustomerPublicationFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeSaasCustomerPublicationFindings[0])).not.toContain(
       "${CUSTOMER_SUCCESS_SLACK_BOT_TOKEN}"
@@ -3117,7 +3121,7 @@ describe("rule engine", () => {
       "sensitive_secret_scope"
     ]);
     expect(runtimeSecretManagerFindings[0]?.severity).toBe("critical");
-    expect(runtimeSecretManagerFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeSecretManagerFindings[0]?.confidence).toBe("medium");
     expect(runtimeSecretManagerFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeSecretManagerFindings[0])).not.toContain("${VAULT_AGENT_TOKEN}");
     expect(JSON.stringify(runtimeSecretManagerFindings[0])).not.toContain("vault.example.invalid");
@@ -3140,7 +3144,7 @@ describe("rule engine", () => {
       "system_prompt_context"
     ]);
     expect(runtimeSecretPromptFindings[0]?.severity).toBe("critical");
-    expect(runtimeSecretPromptFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeSecretPromptFindings[0]?.confidence).toBe("medium");
     expect(runtimeSecretPromptFindings[0]?.recommended_control).toBe("redact");
     expect(JSON.stringify(runtimeSecretPromptFindings[0])).not.toContain("${VAULT_AGENT_TOKEN}");
     expect(JSON.stringify(runtimeSecretPromptFindings[0])).not.toContain("support-agent-system-prompt");
@@ -3168,7 +3172,7 @@ describe("rule engine", () => {
       "wildcard_scope"
     ]);
     expect(runtimeAgentIdentityFindings[0]?.severity).toBe("critical");
-    expect(runtimeAgentIdentityFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeAgentIdentityFindings[0]?.confidence).toBe("medium");
     expect(runtimeAgentIdentityFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeAgentIdentityFindings[0])).not.toContain("${AGENT_IDENTITY_TOKEN}");
     expect(JSON.stringify(runtimeAgentIdentityFindings[0])).not.toContain("auth.agentcsp-demo.example.invalid");
@@ -3198,7 +3202,7 @@ describe("rule engine", () => {
       "wildcard_scope"
     ]);
     expect(runtimeAgentIdentityRefreshFindings[0]?.severity).toBe("critical");
-    expect(runtimeAgentIdentityRefreshFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeAgentIdentityRefreshFindings[0]?.confidence).toBe("medium");
     expect(runtimeAgentIdentityRefreshFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeAgentIdentityRefreshFindings[0])).not.toContain("${AGENT_IDENTITY_TOKEN}");
     expect(JSON.stringify(runtimeAgentIdentityRefreshFindings[0])).not.toContain("auth.agentcsp-demo.example.invalid");
@@ -3231,7 +3235,7 @@ describe("rule engine", () => {
       "secret_manager_access"
     ]);
     expect(runtimeAgentExtensionFindings[0]?.severity).toBe("critical");
-    expect(runtimeAgentExtensionFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeAgentExtensionFindings[0]?.confidence).toBe("medium");
     expect(runtimeAgentExtensionFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimeAgentExtensionFindings[0])).not.toContain("${AGENT_EXTENSION_TOKEN}");
     expect(JSON.stringify(runtimeAgentExtensionFindings[0])).not.toContain("skills.agentcsp-demo.example.invalid");
@@ -3272,7 +3276,7 @@ describe("rule engine", () => {
       "secret_manager_access"
     ]);
     expect(runtimeAgentExtensionAutoUpdateFindings[0]?.severity).toBe("critical");
-    expect(runtimeAgentExtensionAutoUpdateFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeAgentExtensionAutoUpdateFindings[0]?.confidence).toBe("medium");
     expect(runtimeAgentExtensionAutoUpdateFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimeAgentExtensionAutoUpdateFindings[0])).not.toContain("${AGENT_EXTENSION_TOKEN}");
     expect(JSON.stringify(runtimeAgentExtensionAutoUpdateFindings[0])).not.toContain("skills.agentcsp-demo.example.invalid");
@@ -3316,7 +3320,7 @@ describe("rule engine", () => {
       "tool_definition"
     ]);
     expect(runtimeSelfModificationFindings[0]?.severity).toBe("critical");
-    expect(runtimeSelfModificationFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeSelfModificationFindings[0]?.confidence).toBe("medium");
     expect(runtimeSelfModificationFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimeSelfModificationFindings[0])).not.toContain("${AGENT_SELF_MOD_TOKEN}");
     expect(JSON.stringify(runtimeSelfModificationFindings[0])).not.toContain("AGENTS.md");
@@ -3356,7 +3360,7 @@ describe("rule engine", () => {
       "tool_definition_write"
     ]);
     expect(runtimeSelfModificationPersistenceFindings[0]?.severity).toBe("critical");
-    expect(runtimeSelfModificationPersistenceFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeSelfModificationPersistenceFindings[0]?.confidence).toBe("medium");
     expect(runtimeSelfModificationPersistenceFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimeSelfModificationPersistenceFindings[0])).not.toContain("${AGENT_SELF_MOD_TOKEN}");
     expect(JSON.stringify(runtimeSelfModificationPersistenceFindings[0])).not.toContain("AGENTS.md");
@@ -3400,7 +3404,7 @@ describe("rule engine", () => {
       "tool_call"
     ]);
     expect(runtimeApprovalGateFindings[0]?.severity).toBe("critical");
-    expect(runtimeApprovalGateFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeApprovalGateFindings[0]?.confidence).toBe("medium");
     expect(runtimeApprovalGateFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeApprovalGateFindings[0])).not.toContain("${APPROVAL_GATE_TOKEN}");
     expect(JSON.stringify(runtimeApprovalGateFindings[0])).not.toContain("support-approval-classifier");
@@ -3441,7 +3445,7 @@ describe("rule engine", () => {
       "tool_call"
     ]);
     expect(runtimeModelApprovalBridgeFindings[0]?.severity).toBe("critical");
-    expect(runtimeModelApprovalBridgeFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeModelApprovalBridgeFindings[0]?.confidence).toBe("medium");
     expect(runtimeModelApprovalBridgeFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeModelApprovalBridgeFindings[0])).not.toContain("${APPROVAL_GATE_TOKEN}");
     expect(JSON.stringify(runtimeModelApprovalBridgeFindings[0])).not.toContain("support-approval-classifier");
@@ -3479,7 +3483,7 @@ describe("rule engine", () => {
       "webhook"
     ]);
     expect(runtimeApprovalChannelFindings[0]?.severity).toBe("critical");
-    expect(runtimeApprovalChannelFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeApprovalChannelFindings[0]?.confidence).toBe("medium");
     expect(runtimeApprovalChannelFindings[0]?.recommended_control).toBe("deny");
     expect(JSON.stringify(runtimeApprovalChannelFindings[0])).not.toContain("${CHATOPS_APPROVAL_TOKEN}");
     expect(JSON.stringify(runtimeApprovalChannelFindings[0])).not.toContain("hooks.slack.example.invalid");
@@ -3520,7 +3524,7 @@ describe("rule engine", () => {
       "tool_call"
     ]);
     expect(runtimeApprovalSelfApprovalFindings[0]?.severity).toBe("critical");
-    expect(runtimeApprovalSelfApprovalFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeApprovalSelfApprovalFindings[0]?.confidence).toBe("medium");
     expect(runtimeApprovalSelfApprovalFindings[0]?.recommended_control).toBe("deny");
     expect(JSON.stringify(runtimeApprovalSelfApprovalFindings[0])).not.toContain("${CHATOPS_APPROVAL_TOKEN}");
     expect(JSON.stringify(runtimeApprovalSelfApprovalFindings[0])).not.toContain("hooks.slack.example.invalid");
@@ -3563,7 +3567,7 @@ describe("rule engine", () => {
       "tool_call"
     ]);
     expect(runtimeApprovalRawContextFindings[0]?.severity).toBe("critical");
-    expect(runtimeApprovalRawContextFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeApprovalRawContextFindings[0]?.confidence).toBe("medium");
     expect(runtimeApprovalRawContextFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeApprovalRawContextFindings[0])).not.toContain("${CHATOPS_APPROVAL_TOKEN}");
     expect(JSON.stringify(runtimeApprovalRawContextFindings[0])).not.toContain("hooks.slack.example.invalid");
@@ -3607,7 +3611,7 @@ describe("rule engine", () => {
       "tool_call"
     ]);
     expect(runtimeSharedSessionFindings[0]?.severity).toBe("critical");
-    expect(runtimeSharedSessionFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeSharedSessionFindings[0]?.confidence).toBe("medium");
     expect(runtimeSharedSessionFindings[0]?.recommended_control).toBe("deny");
     expect(JSON.stringify(runtimeSharedSessionFindings[0])).not.toContain("${SESSION_SHARE_TOKEN}");
     expect(JSON.stringify(runtimeSharedSessionFindings[0])).not.toContain("sessions.agentcsp-demo.example.invalid");
@@ -3666,7 +3670,7 @@ describe("rule engine", () => {
     expect(runtimePublicSharedSessionFindings[0]?.matched_object.secret_exposure).toBe(true);
     expect(runtimePublicSharedSessionFindings[0]?.matched_object.untrusted_to_privileged).toBe(true);
     expect(runtimePublicSharedSessionFindings[0]?.severity).toBe("critical");
-    expect(runtimePublicSharedSessionFindings[0]?.confidence).toBe("very_high");
+    expect(runtimePublicSharedSessionFindings[0]?.confidence).toBe("medium");
     expect(runtimePublicSharedSessionFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimePublicSharedSessionFindings[0])).not.toContain("${SESSION_SHARE_TOKEN}");
     expect(JSON.stringify(runtimePublicSharedSessionFindings[0])).not.toContain("sessions.agentcsp-demo.example.invalid");
@@ -3698,7 +3702,7 @@ describe("rule engine", () => {
       agent_computer_use_approval_required: false
     });
     expect(runtimeComputerUseFindings[0]?.severity).toBe("critical");
-    expect(runtimeComputerUseFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeComputerUseFindings[0]?.confidence).toBe("medium");
     expect(runtimeComputerUseFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeComputerUseFindings[0])).not.toContain("${DESKTOP_AGENT_TOKEN}");
     expect(JSON.stringify(runtimeComputerUseFindings[0])).not.toContain("desktop.agentcsp-demo.example.invalid");
@@ -3731,7 +3735,7 @@ describe("rule engine", () => {
     expect(runtimeComputerUseCredentialTransferFindings[0]?.matched_object.secret_exposure).toBe(true);
     expect(runtimeComputerUseCredentialTransferFindings[0]?.matched_object.untrusted_to_privileged).toBe(true);
     expect(runtimeComputerUseCredentialTransferFindings[0]?.severity).toBe("critical");
-    expect(runtimeComputerUseCredentialTransferFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeComputerUseCredentialTransferFindings[0]?.confidence).toBe("medium");
     expect(runtimeComputerUseCredentialTransferFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimeComputerUseCredentialTransferFindings[0])).not.toContain("${DESKTOP_AGENT_TOKEN}");
     expect(JSON.stringify(runtimeComputerUseCredentialTransferFindings[0])).not.toContain("desktop.agentcsp-demo.example.invalid");
@@ -3775,7 +3779,7 @@ describe("rule engine", () => {
       "tool_call"
     ]);
     expect(truncationContextWindowFinding?.severity).toBe("critical");
-    expect(truncationContextWindowFinding?.confidence).toBe("very_high");
+    expect(truncationContextWindowFinding?.confidence).toBe("medium");
     expect(truncationContextWindowFinding?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(truncationContextWindowFinding)).not.toContain("${CONTEXT_WINDOW_TOKEN}");
     expect(JSON.stringify(truncationContextWindowFinding)).not.toContain("sliding_window_with_summary");
@@ -3820,7 +3824,7 @@ describe("rule engine", () => {
       "untrusted_user_input"
     ]);
     expect(truncationContextWindowSummaryFinding?.severity).toBe("critical");
-    expect(truncationContextWindowSummaryFinding?.confidence).toBe("very_high");
+    expect(truncationContextWindowSummaryFinding?.confidence).toBe("medium");
     expect(truncationContextWindowSummaryFinding?.recommended_control).toBe("redact");
     expect(JSON.stringify(truncationContextWindowSummaryFinding)).not.toContain("${CONTEXT_WINDOW_TOKEN}");
     expect(JSON.stringify(truncationContextWindowSummaryFinding)).not.toContain("sliding_window_with_summary");
@@ -3866,7 +3870,7 @@ describe("rule engine", () => {
     expect(runtimeLowBudgetContextWindowFindings[0]?.matched_object.side_effect).toBe(true);
     expect(runtimeLowBudgetContextWindowFindings[0]?.matched_object.untrusted_to_privileged).toBe(true);
     expect(runtimeLowBudgetContextWindowFindings[0]?.severity).toBe("critical");
-    expect(runtimeLowBudgetContextWindowFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeLowBudgetContextWindowFindings[0]?.confidence).toBe("medium");
     expect(runtimeLowBudgetContextWindowFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeLowBudgetContextWindowFindings[0])).not.toContain("${TINY_CONTEXT_WINDOW_TOKEN}");
     expect(JSON.stringify(runtimeLowBudgetContextWindowFindings[0])).not.toContain("tiny_sliding_window_with_untrusted_summary");
@@ -3901,7 +3905,7 @@ describe("rule engine", () => {
       "tool_call"
     ]);
     expect(runtimeToolRetryFindings[0]?.severity).toBe("critical");
-    expect(runtimeToolRetryFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeToolRetryFindings[0]?.confidence).toBe("medium");
     expect(runtimeToolRetryFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeToolRetryFindings[0])).not.toContain("${TOOL_RETRY_POLICY_TOKEN}");
     expect(JSON.stringify(runtimeToolRetryFindings[0])).not.toContain("support_db.update_customer_record");
@@ -3948,7 +3952,7 @@ describe("rule engine", () => {
     expect(runtimeToolRetryModelSelectedReplayFindings[0]?.matched_object.secret_exposure).toBe(true);
     expect(runtimeToolRetryModelSelectedReplayFindings[0]?.matched_object.untrusted_to_privileged).toBe(true);
     expect(runtimeToolRetryModelSelectedReplayFindings[0]?.severity).toBe("critical");
-    expect(runtimeToolRetryModelSelectedReplayFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeToolRetryModelSelectedReplayFindings[0]?.confidence).toBe("medium");
     expect(runtimeToolRetryModelSelectedReplayFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimeToolRetryModelSelectedReplayFindings[0])).not.toContain("${TOOL_RETRY_POLICY_TOKEN}");
     expect(JSON.stringify(runtimeToolRetryModelSelectedReplayFindings[0])).not.toContain(
@@ -3991,7 +3995,7 @@ describe("rule engine", () => {
       "tool_observation"
     ]);
     expect(runtimeReasoningStateFindings[0]?.severity).toBe("critical");
-    expect(runtimeReasoningStateFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeReasoningStateFindings[0]?.confidence).toBe("medium");
     expect(runtimeReasoningStateFindings[0]?.recommended_control).toBe("redact");
     expect(JSON.stringify(runtimeReasoningStateFindings[0])).not.toContain("${REASONING_STATE_TOKEN}");
     expect(JSON.stringify(runtimeReasoningStateFindings[0])).not.toContain("scratchpad.agentcsp-demo.example.invalid");
@@ -4023,7 +4027,7 @@ describe("rule engine", () => {
       "tool_observation"
     ]);
     expect(runtimeReasoningStatePublicFindings[0]?.severity).toBe("critical");
-    expect(runtimeReasoningStatePublicFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeReasoningStatePublicFindings[0]?.confidence).toBe("medium");
     expect(runtimeReasoningStatePublicFindings[0]?.recommended_control).toBe("redact");
     expect(JSON.stringify(runtimeReasoningStatePublicFindings[0])).not.toContain("${REASONING_STATE_TOKEN}");
     expect(JSON.stringify(runtimeReasoningStatePublicFindings[0])).not.toContain("scratchpad.agentcsp-demo.example.invalid");
@@ -4075,7 +4079,7 @@ describe("rule engine", () => {
       "tool_observation"
     ]);
     expect(runtimeReasoningStateReplayFindings[0]?.severity).toBe("critical");
-    expect(runtimeReasoningStateReplayFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeReasoningStateReplayFindings[0]?.confidence).toBe("medium");
     expect(runtimeReasoningStateReplayFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimeReasoningStateReplayFindings[0])).not.toContain("${REASONING_STATE_TOKEN}");
     expect(JSON.stringify(runtimeReasoningStateReplayFindings[0])).not.toContain("scratchpad.agentcsp-demo.example.invalid");
@@ -4108,7 +4112,7 @@ describe("rule engine", () => {
       "wildcard_destination"
     ]);
     expect(runtimeNetworkEgressFindings[0]?.severity).toBe("critical");
-    expect(runtimeNetworkEgressFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeNetworkEgressFindings[0]?.confidence).toBe("medium");
     expect(runtimeNetworkEgressFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeNetworkEgressFindings[0])).not.toContain("${NETWORK_EGRESS_TOKEN}");
     expect(JSON.stringify(runtimeNetworkEgressFindings[0])).not.toContain("169.254.169.254");
@@ -4146,7 +4150,7 @@ describe("rule engine", () => {
       "wildcard_destination"
     ]);
     expect(runtimeNetworkRedirectFindings[0]?.severity).toBe("critical");
-    expect(runtimeNetworkRedirectFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeNetworkRedirectFindings[0]?.confidence).toBe("medium");
     expect(runtimeNetworkRedirectFindings[0]?.recommended_control).toBe("deny");
     expect(JSON.stringify(runtimeNetworkRedirectFindings[0])).not.toContain("${NETWORK_EGRESS_TOKEN}");
     expect(JSON.stringify(runtimeNetworkRedirectFindings[0])).not.toContain("169.254.169.254");
@@ -4185,7 +4189,7 @@ describe("rule engine", () => {
       "workspace_file"
     ]);
     expect(runtimeWorkspaceContextFindings[0]?.severity).toBe("critical");
-    expect(runtimeWorkspaceContextFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeWorkspaceContextFindings[0]?.confidence).toBe("medium");
     expect(runtimeWorkspaceContextFindings[0]?.recommended_control).toBe("redact");
     expect(JSON.stringify(runtimeWorkspaceContextFindings[0])).not.toContain("${WORKSPACE_CONTEXT_TOKEN}");
     expect(JSON.stringify(runtimeWorkspaceContextFindings[0])).not.toContain("context-sync.agentcsp-demo.example.invalid");
@@ -4250,7 +4254,7 @@ describe("rule engine", () => {
     expect(runtimeWorkspaceCredentialPersistenceFindings[0]?.matched_object.secret_exposure).toBe(true);
     expect(runtimeWorkspaceCredentialPersistenceFindings[0]?.matched_object.untrusted_to_privileged).toBe(true);
     expect(runtimeWorkspaceCredentialPersistenceFindings[0]?.severity).toBe("critical");
-    expect(runtimeWorkspaceCredentialPersistenceFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeWorkspaceCredentialPersistenceFindings[0]?.confidence).toBe("medium");
     expect(runtimeWorkspaceCredentialPersistenceFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimeWorkspaceCredentialPersistenceFindings[0])).not.toContain("${WORKSPACE_CONTEXT_TOKEN}");
     expect(JSON.stringify(runtimeWorkspaceCredentialPersistenceFindings[0])).not.toContain(
@@ -4304,7 +4308,7 @@ describe("rule engine", () => {
       "tool_call"
     ]);
     expect(runtimeAuthorizationBrokerFindings[0]?.severity).toBe("critical");
-    expect(runtimeAuthorizationBrokerFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeAuthorizationBrokerFindings[0]?.confidence).toBe("medium");
     expect(runtimeAuthorizationBrokerFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeAuthorizationBrokerFindings[0])).not.toContain("${AGENT_AUTHZ_BROKER_TOKEN}");
     expect(JSON.stringify(runtimeAuthorizationBrokerFindings[0])).not.toContain("authz-broker.agentcsp-demo.example.invalid");
@@ -4339,7 +4343,7 @@ describe("rule engine", () => {
       "tool_call"
     ]);
     expect(runtimeAuthorizationFailOpenFindings[0]?.severity).toBe("critical");
-    expect(runtimeAuthorizationFailOpenFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeAuthorizationFailOpenFindings[0]?.confidence).toBe("medium");
     expect(runtimeAuthorizationFailOpenFindings[0]?.recommended_control).toBe("deny");
     expect(JSON.stringify(runtimeAuthorizationFailOpenFindings[0])).not.toContain("${AGENT_AUTHZ_BROKER_TOKEN}");
     expect(JSON.stringify(runtimeAuthorizationFailOpenFindings[0])).not.toContain("authz-broker.agentcsp-demo.example.invalid");
@@ -4389,7 +4393,7 @@ describe("rule engine", () => {
       "write"
     ]);
     expect(runtimeAuthorizationModelSelectedBypassFindings[0]?.severity).toBe("critical");
-    expect(runtimeAuthorizationModelSelectedBypassFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeAuthorizationModelSelectedBypassFindings[0]?.confidence).toBe("medium");
     expect(runtimeAuthorizationModelSelectedBypassFindings[0]?.recommended_control).toBe("deny");
     expect(JSON.stringify(runtimeAuthorizationModelSelectedBypassFindings[0])).not.toContain("${AGENT_AUTHZ_BROKER_TOKEN}");
     expect(JSON.stringify(runtimeAuthorizationModelSelectedBypassFindings[0])).not.toContain(
@@ -4429,7 +4433,7 @@ describe("rule engine", () => {
       "tool_call"
     ]);
     expect(runtimeContextComposerFindings[0]?.severity).toBe("critical");
-    expect(runtimeContextComposerFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeContextComposerFindings[0]?.confidence).toBe("medium");
     expect(runtimeContextComposerFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimeContextComposerFindings[0])).not.toContain("${CONTEXT_COMPOSER_TOKEN}");
     expect(JSON.stringify(runtimeContextComposerFindings[0])).not.toContain("customer_ticket_message");
@@ -4461,7 +4465,7 @@ describe("rule engine", () => {
       "SUPPORT_DB_PASSWORD"
     ]);
     expect(runtimeContextEnvSecretFindings[0]?.severity).toBe("critical");
-    expect(runtimeContextEnvSecretFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeContextEnvSecretFindings[0]?.confidence).toBe("medium");
     expect(runtimeContextEnvSecretFindings[0]?.recommended_control).toBe("redact");
     expect(JSON.stringify(runtimeContextEnvSecretFindings[0])).not.toContain("${CONTEXT_COMPOSER_TOKEN}");
     expect(JSON.stringify(runtimeContextEnvSecretFindings[0])).not.toContain("${CUSTOMER_SUCCESS_SLACK_BOT_TOKEN}");
@@ -4498,7 +4502,7 @@ describe("rule engine", () => {
       "tool_call"
     ]);
     expect(runtimeToolOutputFindings[0]?.severity).toBe("critical");
-    expect(runtimeToolOutputFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeToolOutputFindings[0]?.confidence).toBe("medium");
     expect(runtimeToolOutputFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimeToolOutputFindings[0])).not.toContain("${TOOL_OUTPUT_POLICY_TOKEN}");
     expect(JSON.stringify(runtimeToolOutputFindings[0])).not.toContain("browser_tool_output");
@@ -4542,7 +4546,7 @@ describe("rule engine", () => {
       "tool_call"
     ]);
     expect(runtimeToolOutputApprovalFindings[0]?.severity).toBe("critical");
-    expect(runtimeToolOutputApprovalFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeToolOutputApprovalFindings[0]?.confidence).toBe("medium");
     expect(runtimeToolOutputApprovalFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeToolOutputApprovalFindings[0])).not.toContain("${TOOL_OUTPUT_POLICY_TOKEN}");
     expect(JSON.stringify(runtimeToolOutputApprovalFindings[0])).not.toContain("browser_tool_output");
@@ -4586,7 +4590,7 @@ describe("rule engine", () => {
       "tool_call"
     ]);
     expect(runtimeVisualContextFindings[0]?.severity).toBe("critical");
-    expect(runtimeVisualContextFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeVisualContextFindings[0]?.confidence).toBe("medium");
     expect(runtimeVisualContextFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimeVisualContextFindings[0])).not.toContain("${VISION_CONTEXT_TOKEN}");
     expect(JSON.stringify(runtimeVisualContextFindings[0])).not.toContain("browser_screenshot_observation");
@@ -4637,7 +4641,7 @@ describe("rule engine", () => {
       "tool_call"
     ]);
     expect(runtimeVisualToolExecutionFindings[0]?.severity).toBe("critical");
-    expect(runtimeVisualToolExecutionFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeVisualToolExecutionFindings[0]?.confidence).toBe("medium");
     expect(runtimeVisualToolExecutionFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimeVisualToolExecutionFindings[0])).not.toContain("${VISION_CONTEXT_TOKEN}");
     expect(JSON.stringify(runtimeVisualToolExecutionFindings[0])).not.toContain("browser_screenshot_observation");
@@ -4681,7 +4685,7 @@ describe("rule engine", () => {
       "tool_call"
     ]);
     expect(runtimeInboundTriggerFindings[0]?.severity).toBe("critical");
-    expect(runtimeInboundTriggerFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeInboundTriggerFindings[0]?.confidence).toBe("medium");
     expect(runtimeInboundTriggerFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeInboundTriggerFindings[0])).not.toContain("${SUPPORT_INBOX_TOKEN}");
     expect(JSON.stringify(runtimeInboundTriggerFindings[0])).not.toContain("mail-router.example.invalid");
@@ -4722,7 +4726,7 @@ describe("rule engine", () => {
       "tool_call"
     ]);
     expect(runtimeInboundWebhookFindings[0]?.severity).toBe("critical");
-    expect(runtimeInboundWebhookFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeInboundWebhookFindings[0]?.confidence).toBe("medium");
     expect(runtimeInboundWebhookFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeInboundWebhookFindings[0])).not.toContain("${SUPPORT_INBOX_TOKEN}");
     expect(JSON.stringify(runtimeInboundWebhookFindings[0])).not.toContain("mail-router.example.invalid");
@@ -4779,7 +4783,7 @@ describe("rule engine", () => {
       "tool_call"
     ]);
     expect(runtimeInboundAttachmentFindings[0]?.severity).toBe("critical");
-    expect(runtimeInboundAttachmentFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeInboundAttachmentFindings[0]?.confidence).toBe("medium");
     expect(runtimeInboundAttachmentFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimeInboundAttachmentFindings[0])).not.toContain("${SUPPORT_INBOX_TOKEN}");
     expect(JSON.stringify(runtimeInboundAttachmentFindings[0])).not.toContain("mail-router.example.invalid");
@@ -4838,7 +4842,7 @@ describe("rule engine", () => {
       "tool_call"
     ]);
     expect(runtimeInboundAttachmentParserFindings[0]?.severity).toBe("critical");
-    expect(runtimeInboundAttachmentParserFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeInboundAttachmentParserFindings[0]?.confidence).toBe("high");
     expect(runtimeInboundAttachmentParserFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimeInboundAttachmentParserFindings[0])).not.toContain("${SUPPORT_INBOX_TOKEN}");
     expect(JSON.stringify(runtimeInboundAttachmentParserFindings[0])).not.toContain("mail-router.example.invalid");
@@ -4880,7 +4884,7 @@ describe("rule engine", () => {
       "state_write"
     ]);
     expect(runtimeHostedAssistantFindings[0]?.severity).toBe("critical");
-    expect(runtimeHostedAssistantFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeHostedAssistantFindings[0]?.confidence).toBe("medium");
     expect(runtimeHostedAssistantFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeHostedAssistantFindings[0])).not.toContain("${OPENAI_ASSISTANT_TOKEN}");
     expect(JSON.stringify(runtimeHostedAssistantFindings[0])).not.toContain("asst_support_ops_redacted_by_scanner");
@@ -4910,7 +4914,7 @@ describe("rule engine", () => {
       hosted_assistant_approval_required: false
     });
     expect(runtimeHostedAssistantFanoutFindings[0]?.severity).toBe("critical");
-    expect(runtimeHostedAssistantFanoutFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeHostedAssistantFanoutFindings[0]?.confidence).toBe("medium");
     expect(runtimeHostedAssistantFanoutFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeHostedAssistantFanoutFindings[0])).not.toContain("${OPENAI_ASSISTANT_TOKEN}");
     expect(JSON.stringify(runtimeHostedAssistantFanoutFindings[0])).not.toContain("asst_support_ops_redacted_by_scanner");
@@ -4957,7 +4961,7 @@ describe("rule engine", () => {
       "tool_call"
     ]);
     expect(runtimeRealtimeAgentFindings[0]?.severity).toBe("critical");
-    expect(runtimeRealtimeAgentFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeRealtimeAgentFindings[0]?.confidence).toBe("medium");
     expect(runtimeRealtimeAgentFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeRealtimeAgentFindings[0])).not.toContain("${REALTIME_AGENT_TOKEN}");
     expect(JSON.stringify(runtimeRealtimeAgentFindings[0])).not.toContain("${TWILIO_AUTH_TOKEN}");
@@ -4984,7 +4988,7 @@ describe("rule engine", () => {
       realtime_agent_approval_required: false
     });
     expect(runtimeRealtimeRecordingFindings[0]?.severity).toBe("critical");
-    expect(runtimeRealtimeRecordingFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeRealtimeRecordingFindings[0]?.confidence).toBe("medium");
     expect(runtimeRealtimeRecordingFindings[0]?.recommended_control).toBe("redact");
     expect(JSON.stringify(runtimeRealtimeRecordingFindings[0])).not.toContain("support_voice_recordings_private");
     expect(JSON.stringify(runtimeRealtimeRecordingFindings[0])).not.toContain("realtime_caller_phone_number");
@@ -5033,7 +5037,7 @@ describe("rule engine", () => {
       "tool_call"
     ]);
     expect(runtimeRealtimeCallerToolRecordingFindings[0]?.severity).toBe("critical");
-    expect(runtimeRealtimeCallerToolRecordingFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeRealtimeCallerToolRecordingFindings[0]?.confidence).toBe("medium");
     expect(runtimeRealtimeCallerToolRecordingFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimeRealtimeCallerToolRecordingFindings[0])).not.toContain("${REALTIME_AGENT_TOKEN}");
     expect(JSON.stringify(runtimeRealtimeCallerToolRecordingFindings[0])).not.toContain("${TWILIO_AUTH_TOKEN}");
@@ -5075,7 +5079,7 @@ describe("rule engine", () => {
       "tool_call"
     ]);
     expect(runtimeAgentOrchestrationFindings[0]?.severity).toBe("critical");
-    expect(runtimeAgentOrchestrationFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeAgentOrchestrationFindings[0]?.confidence).toBe("medium");
     expect(runtimeAgentOrchestrationFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeAgentOrchestrationFindings[0])).not.toContain("${CREW_AGENT_TOKEN}");
     expect(JSON.stringify(runtimeAgentOrchestrationFindings[0])).not.toContain("support-escalation-crew");
@@ -5117,7 +5121,7 @@ describe("rule engine", () => {
       "tool_call"
     ]);
     expect(runtimeAgentOrchestrationMemoryFindings[0]?.severity).toBe("critical");
-    expect(runtimeAgentOrchestrationMemoryFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeAgentOrchestrationMemoryFindings[0]?.confidence).toBe("medium");
     expect(runtimeAgentOrchestrationMemoryFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimeAgentOrchestrationMemoryFindings[0])).not.toContain("${CREW_AGENT_TOKEN}");
     expect(JSON.stringify(runtimeAgentOrchestrationMemoryFindings[0])).not.toContain("support-escalation-crew");
@@ -5158,7 +5162,7 @@ describe("rule engine", () => {
       "tool_call"
     ]);
     expect(runtimeAutonomousLoopFindings[0]?.severity).toBe("critical");
-    expect(runtimeAutonomousLoopFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeAutonomousLoopFindings[0]?.confidence).toBe("medium");
     expect(runtimeAutonomousLoopFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeAutonomousLoopFindings[0])).not.toContain("${AGENT_LOOP_TOKEN}");
     expect(JSON.stringify(runtimeAutonomousLoopFindings[0])).not.toContain("customer_ticket_prompt");
@@ -5223,7 +5227,7 @@ describe("rule engine", () => {
       "tool_call"
     ]);
     expect(runtimeAutonomousLoopRunawayFindings[0]?.severity).toBe("critical");
-    expect(runtimeAutonomousLoopRunawayFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeAutonomousLoopRunawayFindings[0]?.confidence).toBe("medium");
     expect(runtimeAutonomousLoopRunawayFindings[0]?.recommended_control).toBe("deny");
     expect(JSON.stringify(runtimeAutonomousLoopRunawayFindings[0])).not.toContain("${AGENT_LOOP_TOKEN}");
     expect(JSON.stringify(runtimeAutonomousLoopRunawayFindings[0])).not.toContain("customer_ticket_prompt");
@@ -5270,7 +5274,7 @@ describe("rule engine", () => {
       "tool_call"
     ]);
     expect(runtimeAgentSafetyFindings[0]?.severity).toBe("critical");
-    expect(runtimeAgentSafetyFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeAgentSafetyFindings[0]?.confidence).toBe("high");
     expect(runtimeAgentSafetyFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeAgentSafetyFindings[0])).not.toContain("${SAFETY_RUNTIME_TOKEN}");
     expect(JSON.stringify(runtimeAgentSafetyFindings[0])).not.toContain("customer-support-disabled-safety");
@@ -5307,7 +5311,7 @@ describe("rule engine", () => {
       "timeout_allow"
     ]);
     expect(explicitFailOpenFinding?.severity).toBe("critical");
-    expect(explicitFailOpenFinding?.confidence).toBe("very_high");
+    expect(explicitFailOpenFinding?.confidence).toBe("medium");
     expect(explicitFailOpenFinding?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(explicitFailOpenFinding)).not.toContain("${SAFETY_FALLBACK_TOKEN}");
     expect(JSON.stringify(explicitFailOpenFinding)).not.toContain("customer-support-fail-open-guardrail");
@@ -5351,7 +5355,7 @@ describe("rule engine", () => {
     expect(runtimeSafetyFailOpenSecretFindings[0]?.matched_object.secret_exposure).toBe(true);
     expect(runtimeSafetyFailOpenSecretFindings[0]?.matched_object.untrusted_to_privileged).toBe(true);
     expect(runtimeSafetyFailOpenSecretFindings[0]?.severity).toBe("critical");
-    expect(runtimeSafetyFailOpenSecretFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeSafetyFailOpenSecretFindings[0]?.confidence).toBe("medium");
     expect(runtimeSafetyFailOpenSecretFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimeSafetyFailOpenSecretFindings[0])).not.toContain("${SAFETY_FALLBACK_TOKEN}");
     expect(JSON.stringify(runtimeSafetyFailOpenSecretFindings[0])).not.toContain("customer-support-fail-open-guardrail");
@@ -5403,7 +5407,7 @@ describe("rule engine", () => {
     ]);
     expect(runtimeModelOnlySafetyFindings[0]?.matched_object.data_classes).toContain("secret");
     expect(runtimeModelOnlySafetyFindings[0]?.severity).toBe("critical");
-    expect(runtimeModelOnlySafetyFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeModelOnlySafetyFindings[0]?.confidence).toBe("medium");
     expect(runtimeModelOnlySafetyFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeModelOnlySafetyFindings[0])).not.toContain("${MODEL_GUARDRAIL_TOKEN}");
     expect(JSON.stringify(runtimeModelOnlySafetyFindings[0])).not.toContain("support-agent-model-only-guardrail");
@@ -5459,7 +5463,7 @@ describe("rule engine", () => {
     expect(runtimeModelOnlySecretAuthorityFindings[0]?.matched_object.secret_exposure).toBe(true);
     expect(runtimeModelOnlySecretAuthorityFindings[0]?.matched_object.untrusted_to_privileged).toBe(true);
     expect(runtimeModelOnlySecretAuthorityFindings[0]?.severity).toBe("critical");
-    expect(runtimeModelOnlySecretAuthorityFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeModelOnlySecretAuthorityFindings[0]?.confidence).toBe("medium");
     expect(runtimeModelOnlySecretAuthorityFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimeModelOnlySecretAuthorityFindings[0])).not.toContain("${MODEL_GUARDRAIL_TOKEN}");
     expect(JSON.stringify(runtimeModelOnlySecretAuthorityFindings[0])).not.toContain("support-agent-model-only-guardrail");
@@ -5516,7 +5520,7 @@ describe("rule engine", () => {
       "tool_call"
     ]);
     expect(runtimeAiEvalHarnessFindings[0]?.severity).toBe("critical");
-    expect(runtimeAiEvalHarnessFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeAiEvalHarnessFindings[0]?.confidence).toBe("medium");
     expect(runtimeAiEvalHarnessFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(runtimeAiEvalHarnessFindings[0])).not.toContain("${EVAL_AGENT_TOKEN}");
     expect(JSON.stringify(runtimeAiEvalHarnessFindings[0])).not.toContain("production-support-redteam");
@@ -5559,7 +5563,7 @@ describe("rule engine", () => {
       "tool_call"
     ]);
     expect(runtimeAiEvalProdRetentionFindings[0]?.severity).toBe("critical");
-    expect(runtimeAiEvalProdRetentionFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeAiEvalProdRetentionFindings[0]?.confidence).toBe("medium");
     expect(runtimeAiEvalProdRetentionFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(runtimeAiEvalProdRetentionFindings[0])).not.toContain("${EVAL_AGENT_TOKEN}");
     expect(JSON.stringify(runtimeAiEvalProdRetentionFindings[0])).not.toContain("production-support-redteam");
@@ -5580,7 +5584,7 @@ describe("rule engine", () => {
     const automationAgentFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002");
     expect(automationAgentFindings).toHaveLength(1);
     expect(automationAgentFindings[0]?.matched_object.path).toBe(".github/workflows/agent-maintenance.yml");
-    expect(automationAgentFindings[0]?.confidence).toBe("very_high");
+    expect(automationAgentFindings[0]?.confidence).toBe("high");
     const automationUntrustedEventFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-003");
     expect(automationUntrustedEventFindings).toHaveLength(1);
     expect(automationUntrustedEventFindings[0]?.matched_object.path).toBe(".github/workflows/agent-maintenance.yml");
@@ -5605,7 +5609,7 @@ describe("rule engine", () => {
       "repository_dispatch_payload"
     ]);
     expect(automationUntrustedEventFindings[0]?.severity).toBe("critical");
-    expect(automationUntrustedEventFindings[0]?.confidence).toBe("very_high");
+    expect(automationUntrustedEventFindings[0]?.confidence).toBe("high");
     expect(automationUntrustedEventFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(automationUntrustedEventFindings[0])).not.toContain("github.event.comment.body");
     expect(JSON.stringify(automationUntrustedEventFindings[0])).not.toContain("github.event.client_payload.prompt");
@@ -5637,7 +5641,7 @@ describe("rule engine", () => {
       "repository_dispatch_payload"
     ]);
     expect(automationShellArgumentFindings[0]?.severity).toBe("critical");
-    expect(automationShellArgumentFindings[0]?.confidence).toBe("very_high");
+    expect(automationShellArgumentFindings[0]?.confidence).toBe("medium");
     expect(automationShellArgumentFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(automationShellArgumentFindings[0])).not.toContain("github.event.comment.body");
     expect(JSON.stringify(automationShellArgumentFindings[0])).not.toContain("github.event.client_payload.prompt");
@@ -5663,7 +5667,7 @@ describe("rule engine", () => {
       secret_ref_key_names: ["TICKETING_MCP_TOKEN"]
     });
     expect(plaintextMcpFindings[0]?.severity).toBe("critical");
-    expect(plaintextMcpFindings[0]?.confidence).toBe("very_high");
+    expect(plaintextMcpFindings[0]?.confidence).toBe("high");
     expect(plaintextMcpFindings[0]?.recommended_control).toBe("deny");
     expect(JSON.stringify(plaintextMcpFindings[0])).not.toContain("http://mcp.example.invalid/sse");
     const mcpContextFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-MCP-007");
@@ -5674,7 +5678,7 @@ describe("rule engine", () => {
     ]);
     expect(mcpContextFindings.every((finding) => finding.matched_object.path === "mcp.json")).toBe(true);
     expect(mcpContextFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(mcpContextFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(mcpContextFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(mcpContextFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(mcpContextFindings.every((finding) => finding.matched_object.metadata.mcp_context_server_secret_backed === true)).toBe(
       true
@@ -5708,7 +5712,7 @@ describe("rule engine", () => {
       secret_ref_key_names: ["CONTEXT_BROKER_TOKEN"]
     });
     expect(mcpClientContextFindings[0]?.severity).toBe("critical");
-    expect(mcpClientContextFindings[0]?.confidence).toBe("very_high");
+    expect(mcpClientContextFindings[0]?.confidence).toBe("medium");
     expect(mcpClientContextFindings[0]?.recommended_control).toBe("deny");
     expect(JSON.stringify(mcpClientContextFindings[0])).not.toContain("${CONTEXT_BROKER_TOKEN}");
     expect(JSON.stringify(mcpClientContextFindings[0])).not.toContain("context-broker.example.invalid/mcp");
@@ -5743,7 +5747,7 @@ describe("rule engine", () => {
       "workspace"
     ]);
     expect(mcpClientRootFindings[0]?.severity).toBe("critical");
-    expect(mcpClientRootFindings[0]?.confidence).toBe("very_high");
+    expect(mcpClientRootFindings[0]?.confidence).toBe("medium");
     expect(mcpClientRootFindings[0]?.recommended_control).toBe("deny");
     expect(JSON.stringify(mcpClientRootFindings[0])).not.toContain("${CONTEXT_BROKER_TOKEN}");
     expect(JSON.stringify(mcpClientRootFindings[0])).not.toContain("context-broker.example.invalid/mcp");
@@ -5779,7 +5783,7 @@ describe("rule engine", () => {
       secret_ref_key_names: ["CONTEXT_BROKER_TOKEN"]
     });
     expect(mcpSamplingFindings[0]?.severity).toBe("critical");
-    expect(mcpSamplingFindings[0]?.confidence).toBe("very_high");
+    expect(mcpSamplingFindings[0]?.confidence).toBe("medium");
     expect(mcpSamplingFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(mcpSamplingFindings[0])).not.toContain("${CONTEXT_BROKER_TOKEN}");
     expect(JSON.stringify(mcpSamplingFindings[0])).not.toContain("context-broker.example.invalid/mcp");
@@ -5803,7 +5807,7 @@ describe("rule engine", () => {
       secret_ref_key_names: ["CONTEXT_BROKER_TOKEN"]
     });
     expect(mcpSensitiveElicitationFindings[0]?.severity).toBe("critical");
-    expect(mcpSensitiveElicitationFindings[0]?.confidence).toBe("very_high");
+    expect(mcpSensitiveElicitationFindings[0]?.confidence).toBe("medium");
     expect(mcpSensitiveElicitationFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(mcpSensitiveElicitationFindings[0])).not.toContain("${CONTEXT_BROKER_TOKEN}");
     expect(JSON.stringify(mcpSensitiveElicitationFindings[0])).not.toContain("context-broker.example.invalid/mcp");
@@ -5829,7 +5833,7 @@ describe("rule engine", () => {
       "wildcard"
     ]);
     expect(mcpEnvPassthroughFindings[0]?.severity).toBe("critical");
-    expect(mcpEnvPassthroughFindings[0]?.confidence).toBe("very_high");
+    expect(mcpEnvPassthroughFindings[0]?.confidence).toBe("high");
     expect(mcpEnvPassthroughFindings[0]?.recommended_control).toBe("deny");
     expect(JSON.stringify(mcpEnvPassthroughFindings[0])).not.toContain("${CONTEXT_BROKER_TOKEN}");
     expect(JSON.stringify(mcpEnvPassthroughFindings[0])).not.toContain("context-broker.example.invalid/mcp");
@@ -5875,7 +5879,7 @@ describe("rule engine", () => {
       "tool_call"
     ]);
     expect(mcpToolCatalogFindings[0]?.severity).toBe("critical");
-    expect(mcpToolCatalogFindings[0]?.confidence).toBe("very_high");
+    expect(mcpToolCatalogFindings[0]?.confidence).toBe("medium");
     expect(mcpToolCatalogFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(mcpToolCatalogFindings[0])).not.toContain("${MCP_TOOL_CATALOG_TOKEN}");
     expect(JSON.stringify(mcpToolCatalogFindings[0])).not.toContain("tool-catalog.agentcsp-demo.example.invalid/mcp");
@@ -5927,7 +5931,7 @@ describe("rule engine", () => {
       "tool_call"
     ]);
     expect(mcpResourceSubscriptionFindings[0]?.severity).toBe("critical");
-    expect(mcpResourceSubscriptionFindings[0]?.confidence).toBe("very_high");
+    expect(mcpResourceSubscriptionFindings[0]?.confidence).toBe("medium");
     expect(mcpResourceSubscriptionFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(mcpResourceSubscriptionFindings[0])).not.toContain("${CONTEXT_BROKER_TOKEN}");
     expect(JSON.stringify(mcpResourceSubscriptionFindings[0])).not.toContain("context-broker.example.invalid/mcp");
@@ -5955,7 +5959,7 @@ describe("rule engine", () => {
     expect(promptExplicitToolFindings).toHaveLength(1);
     expect(promptExplicitToolFindings[0]?.matched_object.path).toBe("prompts/support-ticket.prompt.md");
     expect(promptExplicitToolFindings[0]?.matched_object.metadata.referenced_privileged_tools).toEqual(["publish_summary"]);
-    expect(promptExplicitToolFindings[0]?.confidence).toBe("very_high");
+    expect(promptExplicitToolFindings[0]?.confidence).toBe("medium");
     const promptRoleBoundaryFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-PROMPT-004");
     expect(promptRoleBoundaryFindings).toHaveLength(1);
     expect(promptRoleBoundaryFindings[0]?.matched_object.path).toBe("prompts/support-ticket.prompt.md");
@@ -5969,14 +5973,14 @@ describe("rule engine", () => {
       "system"
     ]);
     expect(promptRoleBoundaryFindings[0]?.severity).toBe("critical");
-    expect(promptRoleBoundaryFindings[0]?.confidence).toBe("very_high");
+    expect(promptRoleBoundaryFindings[0]?.confidence).toBe("medium");
     expect(promptRoleBoundaryFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(promptRoleBoundaryFindings[0])).not.toContain("customer note");
     const ragEgressFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RAG-003");
     expect(ragEgressFindings).toHaveLength(1);
     expect(ragEgressFindings[0]?.matched_object.path).toBe("rag/customer-note.md");
     expect(ragEgressFindings[0]?.data_classes).toContain("confidential");
-    expect(ragEgressFindings[0]?.confidence).toBe("very_high");
+    expect(ragEgressFindings[0]?.confidence).toBe("medium");
     const ragVectorFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RAG-004");
     expect(ragVectorFindings).toHaveLength(1);
     expect(ragVectorFindings[0]?.matched_object.path).toBe("rag/vector-store.yaml");
@@ -5990,7 +5994,7 @@ describe("rule engine", () => {
       vector_store_user_query_input: true
     });
     expect(ragVectorFindings[0]?.severity).toBe("critical");
-    expect(ragVectorFindings[0]?.confidence).toBe("very_high");
+    expect(ragVectorFindings[0]?.confidence).toBe("medium");
     expect(ragVectorFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(ragVectorFindings[0])).not.toContain("${PINECONE_API_KEY}");
     expect(JSON.stringify(ragVectorFindings[0])).not.toContain("agentcsp-demo-vector.example.invalid");
@@ -6019,7 +6023,7 @@ describe("rule engine", () => {
       "user_upload"
     ]);
     expect(ragIngestionFindings[0]?.severity).toBe("critical");
-    expect(ragIngestionFindings[0]?.confidence).toBe("very_high");
+    expect(ragIngestionFindings[0]?.confidence).toBe("medium");
     expect(ragIngestionFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(ragIngestionFindings[0])).not.toContain("${PINECONE_API_KEY}");
     expect(JSON.stringify(ragIngestionFindings[0])).not.toContain("customer_uploaded_docs");
@@ -6043,7 +6047,7 @@ describe("rule engine", () => {
       vector_store_ingestion_approval_required: false
     });
     expect(ragRemoteFetchFindings[0]?.severity).toBe("critical");
-    expect(ragRemoteFetchFindings[0]?.confidence).toBe("very_high");
+    expect(ragRemoteFetchFindings[0]?.confidence).toBe("medium");
     expect(ragRemoteFetchFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(ragRemoteFetchFindings[0])).not.toContain("${PINECONE_API_KEY}");
     expect(JSON.stringify(ragRemoteFetchFindings[0])).not.toContain("agentcsp-demo-vector.example.invalid");
@@ -6070,7 +6074,7 @@ describe("rule engine", () => {
       "user_controlled_filter"
     ]);
     expect(ragRetrievalFindings[0]?.severity).toBe("critical");
-    expect(ragRetrievalFindings[0]?.confidence).toBe("very_high");
+    expect(ragRetrievalFindings[0]?.confidence).toBe("medium");
     expect(ragRetrievalFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(ragRetrievalFindings[0])).not.toContain("${PINECONE_API_KEY}");
     expect(JSON.stringify(ragRetrievalFindings[0])).not.toContain("agentcsp-demo-vector.example.invalid");
@@ -6103,7 +6107,7 @@ describe("rule engine", () => {
       agent_memory_store_approval_required: false
     });
     expect(memoryStoreFindings[0]?.severity).toBe("critical");
-    expect(memoryStoreFindings[0]?.confidence).toBe("very_high");
+    expect(memoryStoreFindings[0]?.confidence).toBe("medium");
     expect(memoryStoreFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(memoryStoreFindings[0])).not.toContain("${MEMORY_STORE_TOKEN}");
     expect(JSON.stringify(memoryStoreFindings[0])).not.toContain("redis-prod-memory.example.invalid");
@@ -6126,7 +6130,7 @@ describe("rule engine", () => {
       agent_memory_store_approval_required: false
     });
     expect(memoryAccessBoundaryFindings[0]?.severity).toBe("critical");
-    expect(memoryAccessBoundaryFindings[0]?.confidence).toBe("very_high");
+    expect(memoryAccessBoundaryFindings[0]?.confidence).toBe("medium");
     expect(memoryAccessBoundaryFindings[0]?.recommended_control).toBe("quarantine");
     expect(memoryAccessBoundaryFindings[0]?.matched_object.metadata.secret_ref_key_names).toEqual(["MEMORY_STORE_TOKEN"]);
     expect(JSON.stringify(memoryAccessBoundaryFindings[0])).not.toContain("${MEMORY_STORE_TOKEN}");
@@ -6153,7 +6157,7 @@ describe("rule engine", () => {
       agent_memory_store_approval_required: false
     });
     expect(memoryRetentionFindings[0]?.severity).toBe("critical");
-    expect(memoryRetentionFindings[0]?.confidence).toBe("very_high");
+    expect(memoryRetentionFindings[0]?.confidence).toBe("medium");
     expect(memoryRetentionFindings[0]?.recommended_control).toBe("redact");
     expect(memoryRetentionFindings[0]?.matched_object.metadata.secret_ref_key_names).toEqual(["MEMORY_STORE_TOKEN"]);
     expect(JSON.stringify(memoryRetentionFindings[0])).not.toContain("${MEMORY_STORE_TOKEN}");
@@ -6179,7 +6183,7 @@ describe("rule engine", () => {
       context_bridge_privileged: true
     });
     expect(cursorRuleFindings[0]?.severity).toBe("critical");
-    expect(cursorRuleFindings[0]?.confidence).toBe("very_high");
+    expect(cursorRuleFindings[0]?.confidence).toBe("medium");
     expect(cursorRuleFindings[0]?.confidence_rationale).toContain("redacted content signals analyzed");
     expect(JSON.stringify(cursorRuleFindings[0])).not.toContain("When a customer escalation arrives");
     const toolOpenWorldFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-005");
@@ -6187,7 +6191,7 @@ describe("rule engine", () => {
       "post_customer_update",
       "source_export_customer_record"
     ]);
-    expect(toolOpenWorldFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(toolOpenWorldFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     const toolDestructiveFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-004");
     expect(toolDestructiveFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "delete_cache",
@@ -6197,7 +6201,7 @@ describe("rule engine", () => {
       "source_readonly_delete_workspace_file",
       "ts_langchain_delete_workspace_path"
     ]);
-    expect(toolDestructiveFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(toolDestructiveFindings.every((finding) => finding.confidence === "high")).toBe(true);
     const toolReadOnlyConflictFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-006");
     expect(toolReadOnlyConflictFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "python_readonly_delete_workspace_file",
@@ -6205,7 +6209,7 @@ describe("rule engine", () => {
       "source_readonly_delete_workspace_file",
       "source_reveal_runtime_secret"
     ]);
-    expect(toolReadOnlyConflictFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(toolReadOnlyConflictFindings.every((finding) => finding.confidence === "high")).toBe(true);
     const toolPathExfilFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-008");
     expect(toolPathExfilFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "customer_record",
@@ -6253,7 +6257,7 @@ describe("rule engine", () => {
       "source_trace_url_response",
       "source_upload_local_file_authenticated_browser"
     ]);
-    expect(toolContentExternalFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(toolContentExternalFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(JSON.stringify(toolContentExternalFindings)).not.toContain("source network response posted externally");
     expect(JSON.stringify(toolContentExternalFindings)).not.toContain("framework network response posted externally");
     expect(JSON.stringify(toolContentExternalFindings)).not.toContain("source network response exported to artifact");
@@ -6305,7 +6309,7 @@ describe("rule engine", () => {
       "source_publish_url_response_prompt_registry_entry",
       "source_upload_local_file_authenticated_browser"
     ]);
-    expect(toolPiiExternalFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(toolPiiExternalFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(toolPiiExternalFindings.every((finding) => finding.data_classes.includes("pii"))).toBe(true);
     const sourceExternalSecretFinding = findings.find(
       (finding) => finding.rule_id === "AGENTCSP-TOOL-003" && finding.matched_object.name === "source_export_customer_record"
@@ -6323,7 +6327,7 @@ describe("rule engine", () => {
     });
     expect(sourceExternalSecretFinding?.matched_object.metadata.handler_env_key_names).toEqual(["SOURCE_EXPORT_TOKEN"]);
     expect(sourceExternalSecretFinding?.severity).toBe("critical");
-    expect(sourceExternalSecretFinding?.confidence).toBe("very_high");
+    expect(sourceExternalSecretFinding?.confidence).toBe("medium");
     expect(JSON.stringify(sourceExternalSecretFinding)).not.toContain("queued");
     expect(JSON.stringify(sourceExternalSecretFinding)).not.toContain("Post customer records");
     const pythonExternalSecretFinding = findings.find(
@@ -6343,7 +6347,7 @@ describe("rule engine", () => {
     });
     expect(pythonExternalSecretFinding?.matched_object.metadata.handler_env_key_names).toEqual(["PYTHON_EXPORT_TOKEN"]);
     expect(pythonExternalSecretFinding?.severity).toBe("critical");
-    expect(pythonExternalSecretFinding?.confidence).toBe("very_high");
+    expect(pythonExternalSecretFinding?.confidence).toBe("medium");
     expect(JSON.stringify(pythonExternalSecretFinding)).not.toContain("queued");
     expect(JSON.stringify(pythonExternalSecretFinding)).not.toContain("Send customer context");
     const langchainExternalSecretFinding = findings.find(
@@ -6364,7 +6368,7 @@ describe("rule engine", () => {
     });
     expect(langchainExternalSecretFinding?.matched_object.metadata.handler_env_key_names).toEqual(["LANGCHAIN_EXPORT_TOKEN"]);
     expect(langchainExternalSecretFinding?.severity).toBe("critical");
-    expect(langchainExternalSecretFinding?.confidence).toBe("very_high");
+    expect(langchainExternalSecretFinding?.confidence).toBe("medium");
     expect(JSON.stringify(langchainExternalSecretFinding)).not.toContain("framework queued");
     expect(JSON.stringify(langchainExternalSecretFinding)).not.toContain("LangChainCustomerWebhookRequest");
     expect(JSON.stringify(langchainExternalSecretFinding)).not.toContain("Caller supplied partner webhook");
@@ -6386,7 +6390,7 @@ describe("rule engine", () => {
     });
     expect(aiSdkExternalSecretFinding?.matched_object.metadata.handler_env_key_names).toEqual(["AI_SDK_EXPORT_TOKEN"]);
     expect(aiSdkExternalSecretFinding?.severity).toBe("critical");
-    expect(aiSdkExternalSecretFinding?.confidence).toBe("very_high");
+    expect(aiSdkExternalSecretFinding?.confidence).toBe("medium");
     expect(JSON.stringify(aiSdkExternalSecretFinding)).not.toContain("ai sdk queued");
     expect(JSON.stringify(aiSdkExternalSecretFinding)).not.toContain("Send AI SDK customer context");
     const sourceHandlerSecretExternalFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-013");
@@ -6399,7 +6403,7 @@ describe("rule engine", () => {
       "source_export_customer_record"
     ]);
     expect(sourceHandlerSecretExternalFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerSecretExternalFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerSecretExternalFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerSecretExternalFindings.every((finding) => finding.recommended_control === "require_approval")).toBe(true);
     expect(sourceHandlerSecretExternalFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerSecretExternalFindings.every((finding) => finding.matched_object.metadata.handler_external_write === true)).toBe(true);
@@ -6419,7 +6423,7 @@ describe("rule engine", () => {
       "source_export_customer_record"
     ]);
     expect(sourceHandlerEnvSecretExternalWriteBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerEnvSecretExternalWriteBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerEnvSecretExternalWriteBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerEnvSecretExternalWriteBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerEnvSecretExternalWriteBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
     expect(sourceHandlerEnvSecretExternalWriteBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
@@ -6448,7 +6452,7 @@ describe("rule engine", () => {
       "ts_langchain_delete_workspace_path"
     ]);
     expect(sourceHandlerLocalMutationFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerLocalMutationFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerLocalMutationFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerLocalMutationFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerLocalMutationFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerLocalMutationFindings.every((finding) => finding.matched_object.metadata.handler_filesystem_delete === true)).toBe(true);
@@ -6495,7 +6499,7 @@ describe("rule engine", () => {
       "source_upload_local_file_authenticated_browser"
     ]);
     expect(sourceHandlerLocalFileDisclosureFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerLocalFileDisclosureFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerLocalFileDisclosureFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerLocalFileDisclosureFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerLocalFileDisclosureFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
     expect(sourceHandlerLocalFileDisclosureFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
@@ -6523,7 +6527,7 @@ describe("rule engine", () => {
       "source_summarize_local_file_with_model"
     ]);
     expect(sourceHandlerLocalFilePromptBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerLocalFilePromptBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerLocalFilePromptBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerLocalFilePromptBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerLocalFilePromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerLocalFilePromptBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -6563,7 +6567,7 @@ describe("rule engine", () => {
       "source_cache_local_file_prompt"
     ]);
     expect(sourceHandlerLocalFilePromptCacheBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerLocalFilePromptCacheBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerLocalFilePromptCacheBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerLocalFilePromptCacheBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerLocalFilePromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerLocalFilePromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -6608,7 +6612,7 @@ describe("rule engine", () => {
       "source_train_on_local_file"
     ]);
     expect(sourceHandlerLocalFileTrainingDatasetBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerLocalFileTrainingDatasetBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerLocalFileTrainingDatasetBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerLocalFileTrainingDatasetBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerLocalFileTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerLocalFileTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -6654,7 +6658,7 @@ describe("rule engine", () => {
       "source_store_local_file_database"
     ]);
     expect(sourceHandlerLocalFileDatabaseWriteBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerLocalFileDatabaseWriteBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerLocalFileDatabaseWriteBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerLocalFileDatabaseWriteBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerLocalFileDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerLocalFileDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -6699,7 +6703,7 @@ describe("rule engine", () => {
       "source_post_local_file_to_slack"
     ]);
     expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -6747,7 +6751,7 @@ describe("rule engine", () => {
       "source_store_local_file_memory"
     ]);
     expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -6794,7 +6798,7 @@ describe("rule engine", () => {
       "source_export_local_file_artifact"
     ]);
     expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -6846,7 +6850,7 @@ describe("rule engine", () => {
       "source_trace_local_file"
     ]);
     expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -6893,7 +6897,7 @@ describe("rule engine", () => {
       "source_queue_local_file_background_task"
     ]);
     expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -6945,7 +6949,7 @@ describe("rule engine", () => {
       "source_delegate_local_file_remote_agent"
     ]);
     expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -7031,7 +7035,7 @@ describe("rule engine", () => {
       "ts_langchain_delete_workspace_path"
     ]);
     expect(sourceHandlerTaintedFilesystemPathFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerTaintedFilesystemPathFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerTaintedFilesystemPathFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerTaintedFilesystemPathFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerTaintedFilesystemPathFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerTaintedFilesystemPathFindings.every((finding) => finding.matched_object.metadata.accepts_path_input === true)).toBe(true);
@@ -7059,7 +7063,7 @@ describe("rule engine", () => {
       "source_fetch_url_content"
     ]);
     expect(sourceHandlerNetworkResponseFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerNetworkResponseFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerNetworkResponseFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerNetworkResponseFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerNetworkResponseFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerNetworkResponseFindings.every((finding) => finding.matched_object.metadata.handler_external_network_call === true)).toBe(true);
@@ -7082,7 +7086,7 @@ describe("rule engine", () => {
       "source_store_url_response_memory"
     ]);
     expect(sourceHandlerNetworkResponseMemoryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerNetworkResponseMemoryBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerNetworkResponseMemoryBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerNetworkResponseMemoryBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerNetworkResponseMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerNetworkResponseMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -7143,7 +7147,7 @@ describe("rule engine", () => {
       "source_post_url_response_external"
     ]);
     expect(sourceHandlerNetworkResponseExternalServiceBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerNetworkResponseExternalServiceBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerNetworkResponseExternalServiceBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerNetworkResponseExternalServiceBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerNetworkResponseExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerNetworkResponseExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -7205,7 +7209,7 @@ describe("rule engine", () => {
       "source_cache_url_response_prompt"
     ]);
     expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -7273,7 +7277,7 @@ describe("rule engine", () => {
       "source_train_on_url_response"
     ]);
     expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -7336,7 +7340,7 @@ describe("rule engine", () => {
       "source_trace_url_response"
     ]);
     expect(sourceHandlerNetworkResponseTelemetryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerNetworkResponseTelemetryBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerNetworkResponseTelemetryBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerNetworkResponseTelemetryBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerNetworkResponseTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerNetworkResponseTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -7381,7 +7385,7 @@ describe("rule engine", () => {
       "source_export_url_response_artifact"
     ]);
     expect(sourceHandlerNetworkResponseArtifactBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerNetworkResponseArtifactBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerNetworkResponseArtifactBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerNetworkResponseArtifactBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerNetworkResponseArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerNetworkResponseArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -7435,7 +7439,7 @@ describe("rule engine", () => {
       "source_queue_url_response_background_task"
     ]);
     expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -7497,7 +7501,7 @@ describe("rule engine", () => {
       "source_delegate_url_response_remote_agent"
     ]);
     expect(sourceHandlerNetworkResponseAgentDelegationBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerNetworkResponseAgentDelegationBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerNetworkResponseAgentDelegationBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerNetworkResponseAgentDelegationBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerNetworkResponseAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerNetworkResponseAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -7564,7 +7568,7 @@ describe("rule engine", () => {
       "source_submit_url_response_browser_form"
     ]);
     expect(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -7624,7 +7628,7 @@ describe("rule engine", () => {
       "source_publish_url_response_prompt_registry_entry"
     ]);
     expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -7764,7 +7768,7 @@ describe("rule engine", () => {
       "source_store_customer_vault_secret_memory"
     ]);
     expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.matched_object.metadata.handler_memory_write === true)).toBe(true);
@@ -7835,7 +7839,7 @@ describe("rule engine", () => {
       "source_persist_customer_memory"
     ]);
     expect(sourceHandlerEmbeddingVectorWriteFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerEmbeddingVectorWriteFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerEmbeddingVectorWriteFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerEmbeddingVectorWriteFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerEmbeddingVectorWriteFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerEmbeddingVectorWriteFindings.every((finding) => finding.matched_object.metadata.handler_embedding_provider_call === true)).toBe(true);
@@ -7880,7 +7884,7 @@ describe("rule engine", () => {
       "source_retrieve_support_context"
     ]);
     expect(sourceHandlerRagRetrievalFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerRagRetrievalFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerRagRetrievalFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerRagRetrievalFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerRagRetrievalFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerRagRetrievalFindings.every((finding) => finding.matched_object.metadata.handler_rag_retrieval === true)).toBe(true);
@@ -7916,7 +7920,7 @@ describe("rule engine", () => {
       "source_store_retrieved_context_memory"
     ]);
     expect(sourceHandlerRagRetrievalMemoryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerRagRetrievalMemoryBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerRagRetrievalMemoryBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerRagRetrievalMemoryBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerRagRetrievalMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerRagRetrievalMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_rag_retrieval === true)).toBe(true);
@@ -7967,7 +7971,7 @@ describe("rule engine", () => {
       "source_queue_local_file_background_task"
     ]);
     expect(sourceHandlerTaskQueueFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerTaskQueueFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerTaskQueueFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerTaskQueueFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerTaskQueueFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerTaskQueueFindings.every((finding) => finding.matched_object.metadata.handler_task_queue_enqueue === true)).toBe(true);
@@ -8018,7 +8022,7 @@ describe("rule engine", () => {
       "source_enqueue_customer_vault_secret_job"
     ]);
     expect(sourceHandlerSecretManagerTaskQueueBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerSecretManagerTaskQueueBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerSecretManagerTaskQueueBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerSecretManagerTaskQueueBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerSecretManagerTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerSecretManagerTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -8064,7 +8068,7 @@ describe("rule engine", () => {
       "source_delegate_customer_vault_secret_remote_agent"
     ]);
     expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -8134,7 +8138,7 @@ describe("rule engine", () => {
       "source_publish_url_response_prompt_registry_entry"
     ]);
     expect(sourceHandlerPromptRegistryWriteFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerPromptRegistryWriteFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerPromptRegistryWriteFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerPromptRegistryWriteFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerPromptRegistryWriteFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerPromptRegistryWriteFindings.every((finding) => finding.matched_object.metadata.handler_prompt_registry_write === true)).toBe(true);
@@ -8207,7 +8211,7 @@ describe("rule engine", () => {
       "source_trace_local_file"
     ]);
     expect(sourceHandlerTelemetryExportFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerTelemetryExportFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerTelemetryExportFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerTelemetryExportFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerTelemetryExportFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerTelemetryExportFindings.every((finding) => finding.matched_object.metadata.handler_telemetry_export === true)).toBe(true);
@@ -8251,7 +8255,7 @@ describe("rule engine", () => {
       "source_write_prompt_cache_entry"
     ]);
     expect(sourceHandlerPromptCacheWriteFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerPromptCacheWriteFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerPromptCacheWriteFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerPromptCacheWriteFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerPromptCacheWriteFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerPromptCacheWriteFindings.every((finding) => finding.matched_object.metadata.handler_prompt_cache_write === true)).toBe(true);
@@ -8312,7 +8316,7 @@ describe("rule engine", () => {
       "source_export_model_training_dataset"
     ].sort());
     expect(sourceHandlerTrainingDatasetExportFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerTrainingDatasetExportFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerTrainingDatasetExportFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerTrainingDatasetExportFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerTrainingDatasetExportFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerTrainingDatasetExportFindings.every((finding) => finding.matched_object.metadata.handler_training_dataset_export === true)).toBe(true);
@@ -8353,7 +8357,7 @@ describe("rule engine", () => {
       "source_record_feedback_auto_promotion"
     ]);
     expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.matched_object.metadata.handler_feedback_pipeline_write === true)).toBe(true);
@@ -8435,7 +8439,7 @@ describe("rule engine", () => {
       "source_update_guardrail_policy_override"
     ]);
     expect(sourceHandlerSafetyPolicyWeakeningFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerSafetyPolicyWeakeningFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerSafetyPolicyWeakeningFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerSafetyPolicyWeakeningFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerSafetyPolicyWeakeningFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerSafetyPolicyWeakeningFindings.every((finding) => finding.matched_object.metadata.handler_safety_policy_write === true)).toBe(true);
@@ -8531,7 +8535,7 @@ describe("rule engine", () => {
       "source_grant_customer_vault_secret_authorization"
     ]);
     expect(sourceHandlerAuthorizationGrantFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerAuthorizationGrantFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerAuthorizationGrantFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerAuthorizationGrantFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerAuthorizationGrantFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerAuthorizationGrantFindings.every((finding) => finding.matched_object.metadata.handler_authorization_policy_write === true)).toBe(true);
@@ -8612,7 +8616,7 @@ describe("rule engine", () => {
       "source_grant_customer_vault_secret_authorization"
     ]);
     expect(sourceHandlerSecretManagerAuthorizationGrantBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerSecretManagerAuthorizationGrantBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerSecretManagerAuthorizationGrantBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerSecretManagerAuthorizationGrantBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerSecretManagerAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerSecretManagerAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -8670,7 +8674,7 @@ describe("rule engine", () => {
       "source_grant_env_secret_authorization"
     ]);
     expect(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -8721,7 +8725,7 @@ describe("rule engine", () => {
       "source_grant_local_file_authorization"
     ]);
     expect(sourceHandlerLocalFileAuthorizationGrantBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerLocalFileAuthorizationGrantBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerLocalFileAuthorizationGrantBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerLocalFileAuthorizationGrantBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerLocalFileAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerLocalFileAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -8790,7 +8794,7 @@ describe("rule engine", () => {
       "source_grant_url_response_authorization"
     ]);
     expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -8861,7 +8865,7 @@ describe("rule engine", () => {
       "source_grant_clipboard_authorization"
     ]);
     expect(sourceHandlerClipboardAuthorizationGrantBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerClipboardAuthorizationGrantBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerClipboardAuthorizationGrantBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerClipboardAuthorizationGrantBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerClipboardAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerClipboardAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -8928,7 +8932,7 @@ describe("rule engine", () => {
       "source_grant_rag_context_authorization"
     ]);
     expect(sourceHandlerRagRetrievalAuthorizationGrantBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerRagRetrievalAuthorizationGrantBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerRagRetrievalAuthorizationGrantBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerRagRetrievalAuthorizationGrantBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerRagRetrievalAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerRagRetrievalAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -9042,7 +9046,7 @@ describe("rule engine", () => {
       "source_store_model_selected_memory"
     ]);
     expect(sourceHandlerTaintedMemoryScopeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerTaintedMemoryScopeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerTaintedMemoryScopeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerTaintedMemoryScopeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerTaintedMemoryScopeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerTaintedMemoryScopeFindings.every((finding) => finding.matched_object.metadata.handler_memory_write === true)).toBe(true);
@@ -9090,7 +9094,7 @@ describe("rule engine", () => {
       "source_update_agent_instructions"
     ]);
     expect(sourceHandlerAgentConfigWriteFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerAgentConfigWriteFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerAgentConfigWriteFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerAgentConfigWriteFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerAgentConfigWriteFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerAgentConfigWriteFindings.every((finding) => finding.matched_object.metadata.handler_agent_config_write === true)).toBe(true);
@@ -9138,7 +9142,7 @@ describe("rule engine", () => {
       "source_issue_vault_backed_agent_credential"
     ]);
     expect(sourceHandlerCredentialIssuanceFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerCredentialIssuanceFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerCredentialIssuanceFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerCredentialIssuanceFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerCredentialIssuanceFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerCredentialIssuanceFindings.every((finding) => finding.matched_object.metadata.handler_credential_issuance === true)).toBe(true);
@@ -9230,7 +9234,7 @@ describe("rule engine", () => {
       "source_mint_agent_session_token"
     ]);
     expect(sourceHandlerTaintedCredentialIssuanceFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerTaintedCredentialIssuanceFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerTaintedCredentialIssuanceFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerTaintedCredentialIssuanceFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerTaintedCredentialIssuanceFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerTaintedCredentialIssuanceFindings.every((finding) => finding.matched_object.metadata.handler_credential_issuance === true)).toBe(true);
@@ -9292,7 +9296,7 @@ describe("rule engine", () => {
       "source_issue_vault_backed_agent_credential"
     ]);
     expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -9339,7 +9343,7 @@ describe("rule engine", () => {
       "source_issue_local_key_agent_credential"
     ]);
     expect(sourceHandlerLocalFileCredentialIssuanceBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerLocalFileCredentialIssuanceBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerLocalFileCredentialIssuanceBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerLocalFileCredentialIssuanceBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerLocalFileCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerLocalFileCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -9381,7 +9385,7 @@ describe("rule engine", () => {
       "source_issue_env_secret_agent_credential"
     ]);
     expect(sourceHandlerEnvSecretCredentialIssuanceBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerEnvSecretCredentialIssuanceBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerEnvSecretCredentialIssuanceBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerEnvSecretCredentialIssuanceBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerEnvSecretCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerEnvSecretCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -9418,7 +9422,7 @@ describe("rule engine", () => {
       "source_issue_url_response_agent_credential"
     ]);
     expect(sourceHandlerNetworkResponseCredentialIssuanceBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerNetworkResponseCredentialIssuanceBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerNetworkResponseCredentialIssuanceBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerNetworkResponseCredentialIssuanceBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerNetworkResponseCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerNetworkResponseCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -9463,7 +9467,7 @@ describe("rule engine", () => {
       "source_issue_rag_context_agent_credential"
     ]);
     expect(sourceHandlerRagRetrievalCredentialIssuanceBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerRagRetrievalCredentialIssuanceBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerRagRetrievalCredentialIssuanceBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerRagRetrievalCredentialIssuanceBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerRagRetrievalCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerRagRetrievalCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -9555,7 +9559,7 @@ describe("rule engine", () => {
       "source_store_privileged_tool_observation_database"
     ]);
     expect(sourceHandlerNestedToolInvocationFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerNestedToolInvocationFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerNestedToolInvocationFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerNestedToolInvocationFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerNestedToolInvocationFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerNestedToolInvocationFindings.every((finding) => finding.matched_object.metadata.handler_tool_invocation === true)).toBe(true);
@@ -9600,7 +9604,7 @@ describe("rule engine", () => {
       "source_run_tool_observation_command"
     ]);
     expect(sourceHandlerToolOutputShellExecutionFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerToolOutputShellExecutionFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerToolOutputShellExecutionFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerToolOutputShellExecutionFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerToolOutputShellExecutionFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerToolOutputShellExecutionFindings.every((finding) => finding.matched_object.metadata.handler_tool_invocation === true)).toBe(true);
@@ -9647,7 +9651,7 @@ describe("rule engine", () => {
       "source_execute_tool_observation_code"
     ]);
     expect(sourceHandlerToolOutputDynamicCodeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerToolOutputDynamicCodeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerToolOutputDynamicCodeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerToolOutputDynamicCodeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerToolOutputDynamicCodeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerToolOutputDynamicCodeFindings.every((finding) => finding.matched_object.metadata.handler_tool_invocation === true)).toBe(true);
@@ -9694,7 +9698,7 @@ describe("rule engine", () => {
       "source_fetch_tool_observation_url"
     ]);
     expect(sourceHandlerToolOutputNetworkDestinationFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerToolOutputNetworkDestinationFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerToolOutputNetworkDestinationFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerToolOutputNetworkDestinationFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerToolOutputNetworkDestinationFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerToolOutputNetworkDestinationFindings.every((finding) => finding.matched_object.metadata.handler_tool_invocation === true)).toBe(true);
@@ -9744,7 +9748,7 @@ describe("rule engine", () => {
       "source_dispatch_privileged_tool"
     ]);
     expect(sourceHandlerToolOutputReturnFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerToolOutputReturnFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerToolOutputReturnFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerToolOutputReturnFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerToolOutputReturnFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerToolOutputReturnFindings.every((finding) => finding.matched_object.metadata.handler_tool_invocation === true)).toBe(true);
@@ -9775,7 +9779,7 @@ describe("rule engine", () => {
       "source_review_privileged_tool_observation"
     ]);
     expect(sourceHandlerToolOutputPromptBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerToolOutputPromptBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerToolOutputPromptBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerToolOutputPromptBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerToolOutputPromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerToolOutputPromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tool_invocation === true)).toBe(true);
@@ -9814,7 +9818,7 @@ describe("rule engine", () => {
       "source_store_privileged_tool_observation_memory"
     ]);
     expect(sourceHandlerToolOutputMemoryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerToolOutputMemoryBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerToolOutputMemoryBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerToolOutputMemoryBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerToolOutputMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerToolOutputMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tool_invocation === true)).toBe(true);
@@ -9856,7 +9860,7 @@ describe("rule engine", () => {
       "source_cache_privileged_tool_observation_prompt"
     ]);
     expect(sourceHandlerToolOutputPromptCacheBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerToolOutputPromptCacheBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerToolOutputPromptCacheBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerToolOutputPromptCacheBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerToolOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerToolOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -9901,7 +9905,7 @@ describe("rule engine", () => {
       "source_embed_privileged_tool_observation_vector_memory"
     ]);
     expect(sourceHandlerToolOutputEmbeddingVectorBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerToolOutputEmbeddingVectorBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerToolOutputEmbeddingVectorBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerToolOutputEmbeddingVectorBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerToolOutputEmbeddingVectorBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerToolOutputEmbeddingVectorBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tool_invocation === true)).toBe(true);
@@ -9949,7 +9953,7 @@ describe("rule engine", () => {
       "source_post_privileged_tool_observation_slack"
     ]);
     expect(sourceHandlerToolOutputExternalServiceBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerToolOutputExternalServiceBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerToolOutputExternalServiceBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerToolOutputExternalServiceBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerToolOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerToolOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tool_invocation === true)).toBe(true);
@@ -9994,7 +9998,7 @@ describe("rule engine", () => {
       "source_export_privileged_tool_observation_trace"
     ]);
     expect(sourceHandlerToolOutputTelemetryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerToolOutputTelemetryBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerToolOutputTelemetryBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerToolOutputTelemetryBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerToolOutputTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerToolOutputTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tool_invocation === true)).toBe(true);
@@ -10036,7 +10040,7 @@ describe("rule engine", () => {
       "source_export_privileged_tool_observation_artifact"
     ]);
     expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tool_invocation === true)).toBe(true);
@@ -10085,7 +10089,7 @@ describe("rule engine", () => {
       "source_enqueue_privileged_tool_observation_job"
     ]);
     expect(sourceHandlerToolOutputTaskQueueBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerToolOutputTaskQueueBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerToolOutputTaskQueueBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerToolOutputTaskQueueBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerToolOutputTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerToolOutputTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tool_invocation === true)).toBe(true);
@@ -10129,7 +10133,7 @@ describe("rule engine", () => {
       "source_export_privileged_tool_observation_training_dataset"
     ]);
     expect(sourceHandlerToolOutputTrainingDatasetBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerToolOutputTrainingDatasetBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerToolOutputTrainingDatasetBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerToolOutputTrainingDatasetBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerToolOutputTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerToolOutputTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tool_invocation === true)).toBe(true);
@@ -10171,7 +10175,7 @@ describe("rule engine", () => {
       "source_delegate_privileged_tool_observation_remote_agent"
     ]);
     expect(sourceHandlerToolOutputAgentDelegationBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerToolOutputAgentDelegationBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerToolOutputAgentDelegationBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerToolOutputAgentDelegationBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerToolOutputAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerToolOutputAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tool_invocation === true)).toBe(true);
@@ -10215,7 +10219,7 @@ describe("rule engine", () => {
       "source_publish_privileged_tool_observation_prompt_registry"
     ]);
     expect(sourceHandlerToolOutputPromptRegistryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerToolOutputPromptRegistryBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerToolOutputPromptRegistryBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerToolOutputPromptRegistryBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerToolOutputPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerToolOutputPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -10266,7 +10270,7 @@ describe("rule engine", () => {
       "source_grant_privileged_tool_observation_authorization"
     ]);
     expect(sourceHandlerToolOutputAuthorizationGrantBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerToolOutputAuthorizationGrantBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerToolOutputAuthorizationGrantBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerToolOutputAuthorizationGrantBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerToolOutputAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerToolOutputAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -10319,7 +10323,7 @@ describe("rule engine", () => {
       "source_issue_privileged_tool_observation_credential"
     ]);
     expect(sourceHandlerToolOutputCredentialIssuanceBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerToolOutputCredentialIssuanceBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerToolOutputCredentialIssuanceBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerToolOutputCredentialIssuanceBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerToolOutputCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerToolOutputCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -10383,7 +10387,7 @@ describe("rule engine", () => {
       "source_delegate_retrieved_context_remote_agent"
     ]);
     expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.matched_object.metadata.handler_agent_delegation === true)).toBe(true);
@@ -10439,7 +10443,7 @@ describe("rule engine", () => {
       "source_publish_retrieved_context_public_artifact"
     ]);
     expect(sourceHandlerArtifactExportFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerArtifactExportFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerArtifactExportFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerArtifactExportFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerArtifactExportFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerArtifactExportFindings.every((finding) => finding.matched_object.metadata.handler_artifact_export === true)).toBe(true);
@@ -10486,7 +10490,7 @@ describe("rule engine", () => {
       "source_export_clipboard_public_artifact"
     ]);
     expect(sourceHandlerClipboardArtifactBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerClipboardArtifactBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerClipboardArtifactBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerClipboardArtifactBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerClipboardArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerClipboardArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -10552,7 +10556,7 @@ describe("rule engine", () => {
       "source_enqueue_clipboard_background_agent_job"
     ]);
     expect(sourceHandlerClipboardTaskQueueBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerClipboardTaskQueueBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerClipboardTaskQueueBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerClipboardTaskQueueBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerClipboardTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerClipboardTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -10618,7 +10622,7 @@ describe("rule engine", () => {
       "source_promote_clipboard_feedback"
     ]);
     expect(sourceHandlerClipboardFeedbackBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerClipboardFeedbackBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerClipboardFeedbackBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerClipboardFeedbackBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerClipboardFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerClipboardFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -10688,7 +10692,7 @@ describe("rule engine", () => {
       "source_model_review_and_run_action"
     ]);
     expect(sourceHandlerModelApprovalFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerModelApprovalFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerModelApprovalFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerModelApprovalFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerModelApprovalFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerModelApprovalFindings.every((finding) => finding.matched_object.metadata.handler_model_approval_gate === true)).toBe(true);
@@ -10725,7 +10729,7 @@ describe("rule engine", () => {
       "source_chatops_approval_and_run_action"
     ]);
     expect(sourceHandlerExternalApprovalChannelFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerExternalApprovalChannelFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerExternalApprovalChannelFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerExternalApprovalChannelFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerExternalApprovalChannelFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerExternalApprovalChannelFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -10812,7 +10816,7 @@ describe("rule engine", () => {
 	      "source_submit_customer_browser_form"
     ].sort());
     expect(sourceHandlerBrowserAutomationFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerBrowserAutomationFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerBrowserAutomationFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerBrowserAutomationFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerBrowserAutomationFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerBrowserAutomationFindings.every((finding) => finding.matched_object.metadata.handler_browser_automation === true)).toBe(true);
@@ -10926,7 +10930,7 @@ describe("rule engine", () => {
 	      "source_submit_customer_browser_form"
     ].sort());
     expect(sourceHandlerTaintedBrowserTargetFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerTaintedBrowserTargetFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerTaintedBrowserTargetFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerTaintedBrowserTargetFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerTaintedBrowserTargetFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerTaintedBrowserTargetFindings.every((finding) => finding.matched_object.metadata.handler_browser_automation === true)).toBe(true);
@@ -10984,7 +10988,7 @@ describe("rule engine", () => {
       "source_paste_clipboard_authenticated_browser"
     ]);
     expect(sourceHandlerClipboardBrowserAutomationBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerClipboardBrowserAutomationBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerClipboardBrowserAutomationBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerClipboardBrowserAutomationBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerClipboardBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerClipboardBrowserAutomationBridgeFindings.every((finding) =>
@@ -11060,7 +11064,7 @@ describe("rule engine", () => {
       "source_submit_privileged_tool_observation_browser_form"
     ]);
     expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -11107,7 +11111,7 @@ describe("rule engine", () => {
       "source_apply_tool_observation_guardrail_override"
     ]);
     expect(sourceHandlerToolOutputSafetyPolicyBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerToolOutputSafetyPolicyBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerToolOutputSafetyPolicyBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerToolOutputSafetyPolicyBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerToolOutputSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerToolOutputSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -11160,7 +11164,7 @@ describe("rule engine", () => {
       "source_apply_vault_secret_guardrail_override"
     ]);
     expect(sourceHandlerSecretManagerSafetyPolicyBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerSecretManagerSafetyPolicyBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerSecretManagerSafetyPolicyBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerSecretManagerSafetyPolicyBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerSecretManagerSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerSecretManagerSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -11217,7 +11221,7 @@ describe("rule engine", () => {
       "source_apply_env_secret_guardrail_override"
     ]);
     expect(sourceHandlerEnvSecretSafetyPolicyBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerEnvSecretSafetyPolicyBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerEnvSecretSafetyPolicyBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerEnvSecretSafetyPolicyBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerEnvSecretSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerEnvSecretSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -11281,7 +11285,7 @@ describe("rule engine", () => {
       "source_apply_url_response_guardrail_override"
     ]);
     expect(sourceHandlerNetworkResponseSafetyPolicyBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerNetworkResponseSafetyPolicyBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerNetworkResponseSafetyPolicyBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerNetworkResponseSafetyPolicyBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerNetworkResponseSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerNetworkResponseSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -11354,7 +11358,7 @@ describe("rule engine", () => {
       "source_apply_rag_context_guardrail_override"
     ]);
     expect(sourceHandlerRagRetrievalSafetyPolicyBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerRagRetrievalSafetyPolicyBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerRagRetrievalSafetyPolicyBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerRagRetrievalSafetyPolicyBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerRagRetrievalSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerRagRetrievalSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -11428,7 +11432,7 @@ describe("rule engine", () => {
       "source_enqueue_retrieved_context_agent_job"
     ]);
     expect(sourceHandlerRagRetrievalTaskQueueBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerRagRetrievalTaskQueueBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerRagRetrievalTaskQueueBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerRagRetrievalTaskQueueBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerRagRetrievalTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerRagRetrievalTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -11494,7 +11498,7 @@ describe("rule engine", () => {
       "source_delegate_retrieved_context_remote_agent"
     ]);
     expect(sourceHandlerRagRetrievalAgentDelegationBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerRagRetrievalAgentDelegationBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerRagRetrievalAgentDelegationBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerRagRetrievalAgentDelegationBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerRagRetrievalAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerRagRetrievalAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -11559,7 +11563,7 @@ describe("rule engine", () => {
       "source_cache_retrieved_context_prompt"
     ]);
     expect(sourceHandlerRagRetrievalPromptCacheBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerRagRetrievalPromptCacheBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptCacheBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerRagRetrievalPromptCacheBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerRagRetrievalPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerRagRetrievalPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -11623,7 +11627,7 @@ describe("rule engine", () => {
       "source_publish_retrieved_context_prompt_registry"
     ]);
     expect(sourceHandlerRagRetrievalPromptRegistryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerRagRetrievalPromptRegistryBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptRegistryBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerRagRetrievalPromptRegistryBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerRagRetrievalPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerRagRetrievalPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -11688,7 +11692,7 @@ describe("rule engine", () => {
       "source_export_retrieved_context_training_dataset"
     ]);
     expect(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -11749,7 +11753,7 @@ describe("rule engine", () => {
       "source_publish_retrieved_context_public_artifact"
     ]);
     expect(sourceHandlerRagRetrievalArtifactBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerRagRetrievalArtifactBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerRagRetrievalArtifactBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerRagRetrievalArtifactBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerRagRetrievalArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerRagRetrievalArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -11814,7 +11818,7 @@ describe("rule engine", () => {
       "source_apply_local_file_guardrail_override"
     ]);
     expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -11887,7 +11891,7 @@ describe("rule engine", () => {
       "source_fill_customer_vault_secret_browser_form"
     ]);
     expect(sourceHandlerSecretManagerBrowserAutomationBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerSecretManagerBrowserAutomationBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerSecretManagerBrowserAutomationBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerSecretManagerBrowserAutomationBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerSecretManagerBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerSecretManagerBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -11933,7 +11937,7 @@ describe("rule engine", () => {
       "source_capture_authenticated_page_screenshot"
     ].sort());
     expect(sourceHandlerVisualContextCaptureFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerVisualContextCaptureFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerVisualContextCaptureFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerVisualContextCaptureFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerVisualContextCaptureFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerVisualContextCaptureFindings.every((finding) => finding.matched_object.metadata.handler_browser_automation === true)).toBe(true);
@@ -11975,7 +11979,7 @@ describe("rule engine", () => {
       "source_review_authenticated_page_screenshot_with_model"
     ]);
     expect(sourceHandlerVisualContextPromptBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerVisualContextPromptBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerVisualContextPromptBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerVisualContextPromptBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerVisualContextPromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerVisualContextPromptBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -12025,7 +12029,7 @@ describe("rule engine", () => {
       "source_post_authenticated_page_screenshot_external"
     ]);
     expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -12078,7 +12082,7 @@ describe("rule engine", () => {
       "source_store_authenticated_page_screenshot_memory"
     ]);
     expect(sourceHandlerVisualContextMemoryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerVisualContextMemoryBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerVisualContextMemoryBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerVisualContextMemoryBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerVisualContextMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerVisualContextMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -12131,7 +12135,7 @@ describe("rule engine", () => {
       "source_export_authenticated_page_screenshot_artifact"
     ]);
     expect(sourceHandlerVisualContextArtifactBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerVisualContextArtifactBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerVisualContextArtifactBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerVisualContextArtifactBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerVisualContextArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerVisualContextArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -12184,7 +12188,7 @@ describe("rule engine", () => {
       "source_export_authenticated_page_screenshot_training_dataset"
     ]);
     expect(sourceHandlerVisualContextTrainingDatasetBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerVisualContextTrainingDatasetBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerVisualContextTrainingDatasetBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerVisualContextTrainingDatasetBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerVisualContextTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerVisualContextTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -12233,7 +12237,7 @@ describe("rule engine", () => {
       "source_export_authenticated_page_screenshot_trace"
     ]);
     expect(sourceHandlerVisualContextTelemetryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerVisualContextTelemetryBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerVisualContextTelemetryBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerVisualContextTelemetryBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerVisualContextTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerVisualContextTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -12281,7 +12285,7 @@ describe("rule engine", () => {
       "source_cache_authenticated_page_screenshot_prompt"
     ]);
     expect(sourceHandlerVisualContextPromptCacheBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerVisualContextPromptCacheBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerVisualContextPromptCacheBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerVisualContextPromptCacheBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerVisualContextPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerVisualContextPromptCacheBridgeFindings.every((finding) =>
@@ -12357,7 +12361,7 @@ describe("rule engine", () => {
       "source_publish_authenticated_page_screenshot_prompt_registry"
     ]);
     expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -12430,7 +12434,7 @@ describe("rule engine", () => {
       "source_store_authenticated_page_screenshot_database"
     ]);
     expect(sourceHandlerVisualContextDatabaseWriteBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerVisualContextDatabaseWriteBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerVisualContextDatabaseWriteBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerVisualContextDatabaseWriteBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerVisualContextDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerVisualContextDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -12497,7 +12501,7 @@ describe("rule engine", () => {
       "source_grant_authenticated_page_screenshot_authorization"
     ]);
     expect(sourceHandlerVisualContextAuthorizationGrantBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerVisualContextAuthorizationGrantBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerVisualContextAuthorizationGrantBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerVisualContextAuthorizationGrantBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerVisualContextAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerVisualContextAuthorizationGrantBridgeFindings.every((finding) =>
@@ -12582,7 +12586,7 @@ describe("rule engine", () => {
       "source_apply_authenticated_page_screenshot_guardrail_override"
     ]);
     expect(sourceHandlerVisualContextSafetyPolicyBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerVisualContextSafetyPolicyBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerVisualContextSafetyPolicyBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerVisualContextSafetyPolicyBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerVisualContextSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerVisualContextSafetyPolicyBridgeFindings.every((finding) =>
@@ -12675,7 +12679,7 @@ describe("rule engine", () => {
       "source_issue_authenticated_page_screenshot_agent_credential"
     ]);
     expect(sourceHandlerVisualContextCredentialIssuanceBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerVisualContextCredentialIssuanceBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerVisualContextCredentialIssuanceBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerVisualContextCredentialIssuanceBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerVisualContextCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerVisualContextCredentialIssuanceBridgeFindings.every((finding) =>
@@ -12756,7 +12760,7 @@ describe("rule engine", () => {
       "source_promote_authenticated_page_screenshot_feedback"
     ]);
     expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) =>
@@ -12837,7 +12841,7 @@ describe("rule engine", () => {
       "source_embed_authenticated_page_screenshot_vector_memory"
     ]);
     expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) =>
@@ -12924,7 +12928,7 @@ describe("rule engine", () => {
       "source_embed_clipboard_vector_memory"
     ]);
     expect(sourceHandlerClipboardEmbeddingVectorBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerClipboardEmbeddingVectorBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerClipboardEmbeddingVectorBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerClipboardEmbeddingVectorBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerClipboardEmbeddingVectorBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerClipboardEmbeddingVectorBridgeFindings.every((finding) =>
@@ -12999,7 +13003,7 @@ describe("rule engine", () => {
       "source_run_authenticated_page_screenshot_command"
     ]);
     expect(sourceHandlerVisualContextShellExecutionBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerVisualContextShellExecutionBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerVisualContextShellExecutionBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerVisualContextShellExecutionBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerVisualContextShellExecutionBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerVisualContextShellExecutionBridgeFindings.every((finding) =>
@@ -13073,7 +13077,7 @@ describe("rule engine", () => {
       "source_execute_authenticated_page_screenshot_code"
     ]);
     expect(sourceHandlerVisualContextDynamicCodeBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerVisualContextDynamicCodeBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerVisualContextDynamicCodeBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerVisualContextDynamicCodeBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerVisualContextDynamicCodeBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerVisualContextDynamicCodeBridgeFindings.every((finding) =>
@@ -13147,7 +13151,7 @@ describe("rule engine", () => {
       "source_run_clipboard_shell_command"
     ]);
     expect(sourceHandlerClipboardShellExecutionBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerClipboardShellExecutionBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerClipboardShellExecutionBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerClipboardShellExecutionBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerClipboardShellExecutionBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerClipboardShellExecutionBridgeFindings.every((finding) =>
@@ -13206,7 +13210,7 @@ describe("rule engine", () => {
       "source_execute_clipboard_dynamic_code"
     ]);
     expect(sourceHandlerClipboardDynamicCodeExecutionBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerClipboardDynamicCodeExecutionBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerClipboardDynamicCodeExecutionBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerClipboardDynamicCodeExecutionBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerClipboardDynamicCodeExecutionBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerClipboardDynamicCodeExecutionBridgeFindings.every((finding) =>
@@ -13267,7 +13271,7 @@ describe("rule engine", () => {
       "source_apply_clipboard_guardrail_override"
     ]);
     expect(sourceHandlerClipboardSafetyPolicyBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerClipboardSafetyPolicyBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerClipboardSafetyPolicyBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerClipboardSafetyPolicyBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerClipboardSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerClipboardSafetyPolicyBridgeFindings.every((finding) =>
@@ -13350,7 +13354,7 @@ describe("rule engine", () => {
       "source_publish_clipboard_prompt_registry"
     ]);
     expect(sourceHandlerClipboardPromptRegistryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerClipboardPromptRegistryBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerClipboardPromptRegistryBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerClipboardPromptRegistryBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerClipboardPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerClipboardPromptRegistryBridgeFindings.every((finding) =>
@@ -13426,7 +13430,7 @@ describe("rule engine", () => {
       "source_export_clipboard_training_dataset"
     ]);
     expect(sourceHandlerClipboardTrainingDatasetBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerClipboardTrainingDatasetBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerClipboardTrainingDatasetBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerClipboardTrainingDatasetBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerClipboardTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerClipboardTrainingDatasetBridgeFindings.every((finding) =>
@@ -13495,7 +13499,7 @@ describe("rule engine", () => {
       "source_delegate_clipboard_remote_agent"
     ]);
     expect(sourceHandlerClipboardAgentDelegationBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerClipboardAgentDelegationBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerClipboardAgentDelegationBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerClipboardAgentDelegationBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerClipboardAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerClipboardAgentDelegationBridgeFindings.every((finding) =>
@@ -13569,7 +13573,7 @@ describe("rule engine", () => {
       "source_issue_clipboard_agent_credential"
     ]);
     expect(sourceHandlerClipboardCredentialIssuanceBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerClipboardCredentialIssuanceBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerClipboardCredentialIssuanceBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerClipboardCredentialIssuanceBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerClipboardCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerClipboardCredentialIssuanceBridgeFindings.every((finding) =>
@@ -13644,7 +13648,7 @@ describe("rule engine", () => {
       "source_enqueue_authenticated_page_screenshot_job"
     ]);
     expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) =>
@@ -13723,7 +13727,7 @@ describe("rule engine", () => {
       "source_delegate_authenticated_page_screenshot_remote_agent"
     ]);
     expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) =>
@@ -13813,7 +13817,7 @@ describe("rule engine", () => {
       "source_upload_local_file_authenticated_browser"
     ]);
     expect(sourceHandlerLocalFileBrowserAutomationBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerLocalFileBrowserAutomationBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerLocalFileBrowserAutomationBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerLocalFileBrowserAutomationBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerLocalFileBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerLocalFileBrowserAutomationBridgeFindings.every((finding) =>
@@ -13874,7 +13878,7 @@ describe("rule engine", () => {
       "source_post_clipboard_to_slack"
     ]);
     expect(sourceHandlerClipboardExternalServiceBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerClipboardExternalServiceBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerClipboardExternalServiceBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerClipboardExternalServiceBridgeFindings.every((finding) => finding.recommended_control === "require_approval")).toBe(true);
     expect(sourceHandlerClipboardExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerClipboardExternalServiceBridgeFindings.every((finding) =>
@@ -13939,7 +13943,7 @@ describe("rule engine", () => {
       "source_review_clipboard_with_model"
     ]);
     expect(sourceHandlerClipboardPromptBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerClipboardPromptBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerClipboardPromptBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerClipboardPromptBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerClipboardPromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerClipboardPromptBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -13985,7 +13989,7 @@ describe("rule engine", () => {
       "source_store_clipboard_memory"
     ]);
     expect(sourceHandlerClipboardMemoryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerClipboardMemoryBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerClipboardMemoryBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerClipboardMemoryBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerClipboardMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerClipboardMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -14035,7 +14039,7 @@ describe("rule engine", () => {
       "source_cache_clipboard_prompt"
     ]);
     expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -14118,7 +14122,7 @@ describe("rule engine", () => {
       "source_summarize_customer_vault_secret_with_model"
     ]);
     expect(sourceHandlerSecretManagerFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerSecretManagerFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerSecretManagerFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerSecretManagerFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerSecretManagerFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerSecretManagerFindings.every((finding) => finding.matched_object.metadata.handler_secret_manager_access === true)).toBe(true);
@@ -14246,7 +14250,7 @@ describe("rule engine", () => {
       "source_summarize_customer_vault_secret_with_model"
     ]);
     expect(sourceHandlerTaintedSecretManagerFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerTaintedSecretManagerFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerTaintedSecretManagerFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerTaintedSecretManagerFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerTaintedSecretManagerFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerTaintedSecretManagerFindings.every((finding) => finding.matched_object.metadata.handler_secret_manager_access === true)).toBe(true);
@@ -14341,7 +14345,7 @@ describe("rule engine", () => {
       "source_send_customer_slack_update"
     ].sort());
     expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.matched_object.metadata.handler_external_service_write === true)).toBe(true);
@@ -14397,7 +14401,7 @@ describe("rule engine", () => {
       "source_send_customer_slack_update"
     ].sort());
     expect(sourceHandlerTaintedExternalServiceRecipientFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerTaintedExternalServiceRecipientFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerTaintedExternalServiceRecipientFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerTaintedExternalServiceRecipientFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerTaintedExternalServiceRecipientFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerTaintedExternalServiceRecipientFindings.every((finding) => finding.matched_object.metadata.handler_external_service_write === true)).toBe(true);
@@ -14440,7 +14444,7 @@ describe("rule engine", () => {
       "source_post_customer_vault_secret_slack"
     ]);
     expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_manager_access === true)).toBe(true);
@@ -14489,7 +14493,7 @@ describe("rule engine", () => {
       "source_summarize_customer_vault_secret_with_model"
     ]);
     expect(sourceHandlerSecretManagerPromptBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerSecretManagerPromptBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerSecretManagerPromptBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerSecretManagerPromptBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerSecretManagerPromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerSecretManagerPromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_manager_access === true)).toBe(true);
@@ -14553,7 +14557,7 @@ describe("rule engine", () => {
       "source_store_customer_vault_secret_memory"
     ]);
     expect(sourceHandlerSecretManagerMemoryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerSecretManagerMemoryBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerSecretManagerMemoryBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerSecretManagerMemoryBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerSecretManagerMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerSecretManagerMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -14633,7 +14637,7 @@ describe("rule engine", () => {
       "source_embed_customer_vault_secret_vector_memory"
     ]);
     expect(sourceHandlerSecretManagerEmbeddingVectorBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerSecretManagerEmbeddingVectorBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerSecretManagerEmbeddingVectorBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerSecretManagerEmbeddingVectorBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerSecretManagerEmbeddingVectorBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerSecretManagerEmbeddingVectorBridgeFindings.every((finding) =>
@@ -14695,7 +14699,7 @@ describe("rule engine", () => {
       "source_export_customer_vault_secret_training_dataset"
     ]);
     expect(sourceHandlerSecretManagerTrainingDatasetBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerSecretManagerTrainingDatasetBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerSecretManagerTrainingDatasetBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerSecretManagerTrainingDatasetBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerSecretManagerTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerSecretManagerTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -14744,7 +14748,7 @@ describe("rule engine", () => {
       "source_promote_customer_vault_secret_feedback"
     ]);
     expect(sourceHandlerSecretManagerFeedbackBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerSecretManagerFeedbackBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerSecretManagerFeedbackBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerSecretManagerFeedbackBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerSecretManagerFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerSecretManagerFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -14802,7 +14806,7 @@ describe("rule engine", () => {
       "source_export_customer_vault_secret_artifact"
     ]);
     expect(sourceHandlerSecretManagerArtifactBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerSecretManagerArtifactBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerSecretManagerArtifactBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerSecretManagerArtifactBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerSecretManagerArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerSecretManagerArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -14856,7 +14860,7 @@ describe("rule engine", () => {
       "source_export_customer_vault_secret_trace"
     ]);
     expect(sourceHandlerSecretManagerTelemetryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerSecretManagerTelemetryBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerSecretManagerTelemetryBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerSecretManagerTelemetryBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerSecretManagerTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerSecretManagerTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -14909,7 +14913,7 @@ describe("rule engine", () => {
       "source_cache_customer_vault_secret_prompt"
     ]);
     expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -14966,7 +14970,7 @@ describe("rule engine", () => {
       "source_publish_customer_vault_secret_prompt_registry"
     ]);
     expect(sourceHandlerSecretManagerPromptRegistryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerSecretManagerPromptRegistryBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerSecretManagerPromptRegistryBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerSecretManagerPromptRegistryBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerSecretManagerPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerSecretManagerPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -15024,7 +15028,7 @@ describe("rule engine", () => {
       "source_publish_env_secret_prompt_registry"
     ]);
     expect(sourceHandlerEnvSecretPromptRegistryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerEnvSecretPromptRegistryBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerEnvSecretPromptRegistryBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerEnvSecretPromptRegistryBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerEnvSecretPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerEnvSecretPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -15086,7 +15090,7 @@ describe("rule engine", () => {
       "source_publish_local_file_prompt_registry"
     ]);
     expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -15201,7 +15205,7 @@ describe("rule engine", () => {
       "source_summarize_customer_with_model"
     ].sort());
     expect(sourceHandlerModelProviderFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerModelProviderFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerModelProviderFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerModelProviderFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
@@ -15284,7 +15288,7 @@ describe("rule engine", () => {
       "source_review_env_secret_with_model"
     ]);
     expect(sourceHandlerEnvSecretPromptBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerEnvSecretPromptBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerEnvSecretPromptBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerEnvSecretPromptBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerEnvSecretPromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerEnvSecretPromptBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -15316,7 +15320,7 @@ describe("rule engine", () => {
       "source_store_env_secret_memory"
     ]);
     expect(sourceHandlerEnvSecretMemoryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerEnvSecretMemoryBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerEnvSecretMemoryBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerEnvSecretMemoryBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerEnvSecretMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerEnvSecretMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -15350,7 +15354,7 @@ describe("rule engine", () => {
       "source_store_env_secret_database"
     ]);
     expect(sourceHandlerEnvSecretDatabaseWriteBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerEnvSecretDatabaseWriteBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerEnvSecretDatabaseWriteBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerEnvSecretDatabaseWriteBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerEnvSecretDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerEnvSecretDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -15400,7 +15404,7 @@ describe("rule engine", () => {
       "source_cache_env_secret_prompt"
     ]);
     expect(sourceHandlerEnvSecretPromptCacheBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerEnvSecretPromptCacheBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerEnvSecretPromptCacheBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerEnvSecretPromptCacheBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerEnvSecretPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerEnvSecretPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -15437,7 +15441,7 @@ describe("rule engine", () => {
       "source_export_env_secret_training_dataset"
     ]);
     expect(sourceHandlerEnvSecretTrainingDatasetBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerEnvSecretTrainingDatasetBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerEnvSecretTrainingDatasetBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerEnvSecretTrainingDatasetBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerEnvSecretTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerEnvSecretTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -15475,7 +15479,7 @@ describe("rule engine", () => {
       "source_promote_env_secret_feedback"
     ]);
     expect(sourceHandlerEnvSecretFeedbackBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerEnvSecretFeedbackBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerEnvSecretFeedbackBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerEnvSecretFeedbackBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerEnvSecretFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerEnvSecretFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -15528,7 +15532,7 @@ describe("rule engine", () => {
       "source_export_env_secret_trace"
     ]);
     expect(sourceHandlerEnvSecretTelemetryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerEnvSecretTelemetryBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerEnvSecretTelemetryBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerEnvSecretTelemetryBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerEnvSecretTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerEnvSecretTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -15565,7 +15569,7 @@ describe("rule engine", () => {
       "source_export_env_secret_artifact"
     ]);
     expect(sourceHandlerEnvSecretArtifactBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerEnvSecretArtifactBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerEnvSecretArtifactBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerEnvSecretArtifactBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerEnvSecretArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerEnvSecretArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -15611,7 +15615,7 @@ describe("rule engine", () => {
       "source_enqueue_env_secret_background_job"
     ]);
     expect(sourceHandlerEnvSecretTaskQueueBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerEnvSecretTaskQueueBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerEnvSecretTaskQueueBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerEnvSecretTaskQueueBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerEnvSecretTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerEnvSecretTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -15659,7 +15663,7 @@ describe("rule engine", () => {
       "source_delegate_env_secret_remote_agent"
     ]);
     expect(sourceHandlerEnvSecretAgentDelegationBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerEnvSecretAgentDelegationBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerEnvSecretAgentDelegationBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerEnvSecretAgentDelegationBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerEnvSecretAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerEnvSecretAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -15706,7 +15710,7 @@ describe("rule engine", () => {
       "source_fill_env_secret_browser_form"
     ]);
     expect(sourceHandlerEnvSecretBrowserAutomationBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerEnvSecretBrowserAutomationBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerEnvSecretBrowserAutomationBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerEnvSecretBrowserAutomationBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerEnvSecretBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerEnvSecretBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -15760,7 +15764,7 @@ describe("rule engine", () => {
       "source_summarize_retrieved_context_with_model"
     ]);
     expect(sourceHandlerRagRetrievalPromptBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerRagRetrievalPromptBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerRagRetrievalPromptBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerRagRetrievalPromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerRagRetrievalPromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_rag_retrieval === true)).toBe(true);
@@ -15795,7 +15799,7 @@ describe("rule engine", () => {
       "source_post_retrieved_context_external"
     ]);
     expect(sourceHandlerRagRetrievalExternalServiceBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerRagRetrievalExternalServiceBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerRagRetrievalExternalServiceBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerRagRetrievalExternalServiceBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerRagRetrievalExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerRagRetrievalExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_rag_retrieval === true)).toBe(true);
@@ -15836,7 +15840,7 @@ describe("rule engine", () => {
       "source_submit_retrieved_context_browser"
     ]);
     expect(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_rag_retrieval === true)).toBe(true);
@@ -15924,7 +15928,7 @@ describe("rule engine", () => {
       "source_summarize_customer_with_model"
     ]);
     expect(sourceHandlerTaintedModelSelectionFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerTaintedModelSelectionFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerTaintedModelSelectionFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerTaintedModelSelectionFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerTaintedModelSelectionFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerTaintedModelSelectionFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
@@ -16018,7 +16022,7 @@ describe("rule engine", () => {
       "source_summarize_retrieved_context_with_model"
     ].sort());
     expect(sourceHandlerPrivilegedPromptFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerPrivilegedPromptFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerPrivilegedPromptFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerPrivilegedPromptFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerPrivilegedPromptFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerPrivilegedPromptFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
@@ -16056,7 +16060,7 @@ describe("rule engine", () => {
       "source_run_remediation_command"
     ]);
     expect(sourceHandlerShellFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerShellFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerShellFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerShellFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerShellFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerShellFindings.every((finding) => finding.matched_object.metadata.handler_shell_execution === true)).toBe(true);
@@ -16073,7 +16077,7 @@ describe("rule engine", () => {
       "source_run_remediation_command"
     ]);
     expect(sourceHandlerTaintedShellFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerTaintedShellFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerTaintedShellFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerTaintedShellFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerTaintedShellFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerTaintedShellFindings.every((finding) => finding.matched_object.metadata.handler_shell_execution === true)).toBe(true);
@@ -16099,7 +16103,7 @@ describe("rule engine", () => {
       "source_execute_model_generated_code"
     ]);
     expect(sourceHandlerModelOutputDynamicCodeBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerModelOutputDynamicCodeBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerModelOutputDynamicCodeBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerModelOutputDynamicCodeBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerModelOutputDynamicCodeBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerModelOutputDynamicCodeBridgeFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
@@ -16150,7 +16154,7 @@ describe("rule engine", () => {
       "source_fetch_model_selected_url"
     ]);
     expect(sourceHandlerModelOutputNetworkDestinationBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerModelOutputNetworkDestinationBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerModelOutputNetworkDestinationBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerModelOutputNetworkDestinationBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerModelOutputNetworkDestinationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerModelOutputNetworkDestinationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_external_network_call === true)).toBe(true);
@@ -16202,7 +16206,7 @@ describe("rule engine", () => {
       "source_run_model_generated_command"
     ]);
     expect(sourceHandlerModelOutputShellExecutionBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerModelOutputShellExecutionBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerModelOutputShellExecutionBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerModelOutputShellExecutionBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerModelOutputShellExecutionBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerModelOutputShellExecutionBridgeFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
@@ -16254,7 +16258,7 @@ describe("rule engine", () => {
       "source_execute_model_browser_action"
     ]);
     expect(sourceHandlerModelOutputBrowserAutomationBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerModelOutputBrowserAutomationBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerModelOutputBrowserAutomationBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerModelOutputBrowserAutomationBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerModelOutputBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerModelOutputBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
@@ -16307,7 +16311,7 @@ describe("rule engine", () => {
       "source_apply_model_database_update"
     ]);
     expect(sourceHandlerModelOutputDatabaseWriteBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerModelOutputDatabaseWriteBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerModelOutputDatabaseWriteBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerModelOutputDatabaseWriteBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerModelOutputDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerModelOutputDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
@@ -16359,7 +16363,7 @@ describe("rule engine", () => {
       "source_grant_model_selected_authorization"
     ]);
     expect(sourceHandlerModelOutputAuthorizationGrantBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerModelOutputAuthorizationGrantBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerModelOutputAuthorizationGrantBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerModelOutputAuthorizationGrantBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerModelOutputAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerModelOutputAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
@@ -16414,7 +16418,7 @@ describe("rule engine", () => {
       "source_issue_model_selected_credential"
     ]);
     expect(sourceHandlerModelOutputCredentialIssuanceBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerModelOutputCredentialIssuanceBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerModelOutputCredentialIssuanceBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerModelOutputCredentialIssuanceBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerModelOutputCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerModelOutputCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
@@ -16472,7 +16476,7 @@ describe("rule engine", () => {
       "source_enqueue_model_selected_background_job"
     ]);
     expect(sourceHandlerModelOutputTaskQueueBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerModelOutputTaskQueueBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerModelOutputTaskQueueBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerModelOutputTaskQueueBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerModelOutputTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerModelOutputTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
@@ -16535,7 +16539,7 @@ describe("rule engine", () => {
       "source_delegate_model_selected_remote_agent_task"
     ]);
     expect(sourceHandlerModelOutputAgentDelegationBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerModelOutputAgentDelegationBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerModelOutputAgentDelegationBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerModelOutputAgentDelegationBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerModelOutputAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerModelOutputAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
@@ -16605,7 +16609,7 @@ describe("rule engine", () => {
       "source_publish_model_selected_prompt_registry_entry"
     ]);
     expect(sourceHandlerModelOutputPromptRegistryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerModelOutputPromptRegistryBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerModelOutputPromptRegistryBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerModelOutputPromptRegistryBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerModelOutputPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerModelOutputPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
@@ -16676,7 +16680,7 @@ describe("rule engine", () => {
       "source_apply_model_selected_guardrail_policy_override"
     ]);
     expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
@@ -16747,7 +16751,7 @@ describe("rule engine", () => {
       "source_post_model_selected_external_update"
     ]);
     expect(sourceHandlerModelOutputExternalServiceBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerModelOutputExternalServiceBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerModelOutputExternalServiceBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerModelOutputExternalServiceBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerModelOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerModelOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
@@ -16799,7 +16803,7 @@ describe("rule engine", () => {
       "source_store_model_selected_memory"
     ]);
     expect(sourceHandlerModelOutputMemoryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerModelOutputMemoryBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerModelOutputMemoryBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerModelOutputMemoryBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerModelOutputMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerModelOutputMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
@@ -16853,7 +16857,7 @@ describe("rule engine", () => {
       "source_export_model_training_dataset"
     ]);
     expect(sourceHandlerModelOutputTrainingDatasetBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerModelOutputTrainingDatasetBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerModelOutputTrainingDatasetBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerModelOutputTrainingDatasetBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerModelOutputTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerModelOutputTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
@@ -16909,7 +16913,7 @@ describe("rule engine", () => {
       "source_export_model_artifact"
     ]);
     expect(sourceHandlerModelOutputArtifactBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerModelOutputArtifactBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerModelOutputArtifactBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerModelOutputArtifactBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerModelOutputArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerModelOutputArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
@@ -16970,7 +16974,7 @@ describe("rule engine", () => {
       "source_export_model_trace"
     ]);
     expect(sourceHandlerModelOutputTelemetryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerModelOutputTelemetryBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerModelOutputTelemetryBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerModelOutputTelemetryBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerModelOutputTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerModelOutputTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
@@ -17028,7 +17032,7 @@ describe("rule engine", () => {
       "source_cache_model_completion"
     ]);
     expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -17098,7 +17102,7 @@ describe("rule engine", () => {
       "source_promote_model_completion_feedback"
     ]);
     expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -17176,7 +17180,7 @@ describe("rule engine", () => {
       "source_promote_privileged_tool_observation_feedback"
     ]);
     expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -17246,7 +17250,7 @@ describe("rule engine", () => {
       "source_evaluate_agent_expression"
     ]);
     expect(sourceHandlerDynamicCodeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerDynamicCodeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerDynamicCodeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerDynamicCodeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerDynamicCodeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerDynamicCodeFindings.every((finding) => finding.matched_object.metadata.handler_dynamic_code_execution === true)).toBe(true);
@@ -17265,7 +17269,7 @@ describe("rule engine", () => {
       "source_evaluate_agent_expression"
     ]);
     expect(sourceHandlerTaintedDynamicCodeFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerTaintedDynamicCodeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerTaintedDynamicCodeFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerTaintedDynamicCodeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerTaintedDynamicCodeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerTaintedDynamicCodeFindings.every((finding) => finding.matched_object.metadata.handler_dynamic_code_execution === true)).toBe(true);
@@ -17291,7 +17295,7 @@ describe("rule engine", () => {
       "python_load_serialized_agent_state"
     ]);
     expect(sourceHandlerUnsafeDeserializationFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerUnsafeDeserializationFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerUnsafeDeserializationFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerUnsafeDeserializationFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerUnsafeDeserializationFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerUnsafeDeserializationFindings.every((finding) => finding.matched_object.metadata.handler_unsafe_deserialization === true)).toBe(true);
@@ -17312,7 +17316,7 @@ describe("rule engine", () => {
       "python_load_serialized_agent_state"
     ]);
     expect(sourceHandlerTaintedDeserializationFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerTaintedDeserializationFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerTaintedDeserializationFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerTaintedDeserializationFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerTaintedDeserializationFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerTaintedDeserializationFindings.every((finding) => finding.matched_object.metadata.handler_unsafe_deserialization === true)).toBe(true);
@@ -17359,7 +17363,7 @@ describe("rule engine", () => {
       "source_store_privileged_tool_observation_database"
     ]);
     expect(sourceHandlerToolOutputDatabaseWriteFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerToolOutputDatabaseWriteFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerToolOutputDatabaseWriteFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerToolOutputDatabaseWriteFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerToolOutputDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerToolOutputDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -17401,7 +17405,7 @@ describe("rule engine", () => {
       "source_store_customer_vault_secret_database"
     ]);
     expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
@@ -17448,7 +17452,7 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerSecretManagerDatabaseWriteFindings)).not.toContain("framework vault secret stored in database");
     expect(JSON.stringify(sourceHandlerSecretManagerDatabaseWriteFindings)).not.toContain("Store a customer support secret");
     expect(sourceHandlerDatabaseFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerDatabaseFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerDatabaseFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerDatabaseFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerDatabaseFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerDatabaseFindings.every((finding) => finding.matched_object.metadata.handler_database_query === true)).toBe(true);
@@ -17473,7 +17477,7 @@ describe("rule engine", () => {
       "source_apply_record_change_sql"
     ]);
     expect(sourceHandlerTaintedDatabaseQueryFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerTaintedDatabaseQueryFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerTaintedDatabaseQueryFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerTaintedDatabaseQueryFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerTaintedDatabaseQueryFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerTaintedDatabaseQueryFindings.every((finding) => finding.matched_object.metadata.handler_database_query === true)).toBe(true);
@@ -17501,7 +17505,7 @@ describe("rule engine", () => {
       "source_reveal_runtime_secret"
     ]);
     expect(sourceHandlerSecretOutputFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerSecretOutputFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerSecretOutputFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerSecretOutputFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerSecretOutputFindings.every((finding) => finding.data_classes.includes("credential"))).toBe(true);
     expect(sourceHandlerSecretOutputFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
@@ -17528,7 +17532,7 @@ describe("rule engine", () => {
       "source_submit_url_response_browser_form"
     ]);
     expect(sourceHandlerCredentialedNetworkFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerCredentialedNetworkFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerCredentialedNetworkFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerCredentialedNetworkFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerCredentialedNetworkFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerCredentialedNetworkFindings.every((finding) => finding.matched_object.metadata.handler_credentialed_network_read === true)).toBe(true);
@@ -17594,7 +17598,7 @@ describe("rule engine", () => {
       "source_train_on_url_response"
     ]);
     expect(sourceHandlerTaintedNetworkDestinationFindings.every((finding) => finding.severity === "critical")).toBe(true);
-    expect(sourceHandlerTaintedNetworkDestinationFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerTaintedNetworkDestinationFindings.every((finding) => finding.confidence === "medium")).toBe(true);
     expect(sourceHandlerTaintedNetworkDestinationFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerTaintedNetworkDestinationFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerTaintedNetworkDestinationFindings.every((finding) => finding.matched_object.metadata.handler_external_network_call === true)).toBe(true);
@@ -17643,7 +17647,7 @@ describe("rule engine", () => {
       external_write: true
     });
     expect(toolDescriptionInjectionFindings[0]?.severity).toBe("critical");
-    expect(toolDescriptionInjectionFindings[0]?.confidence).toBe("very_high");
+    expect(toolDescriptionInjectionFindings[0]?.confidence).toBe("medium");
     expect(toolDescriptionInjectionFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(toolDescriptionInjectionFindings[0])).not.toContain("ignore previous instructions");
     const openApiToolFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-012");
@@ -17670,7 +17674,7 @@ describe("rule engine", () => {
       openapi_approval_required: false
     });
     expect(openApiToolFindings[0]?.severity).toBe("critical");
-    expect(openApiToolFindings[0]?.confidence).toBe("very_high");
+    expect(openApiToolFindings[0]?.confidence).toBe("medium");
     expect(openApiToolFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(openApiToolFindings[0])).not.toContain("support-api.agentcsp-demo.example.invalid");
     expect(JSON.stringify(openApiToolFindings[0])).not.toContain("/customers/{customer_id}/messages");
@@ -17705,7 +17709,7 @@ describe("rule engine", () => {
       "freeform_content"
     );
     expect(openApiPromptContentEgressFindings[0]?.severity).toBe("critical");
-    expect(openApiPromptContentEgressFindings[0]?.confidence).toBe("very_high");
+    expect(openApiPromptContentEgressFindings[0]?.confidence).toBe("medium");
     expect(openApiPromptContentEgressFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(openApiPromptContentEgressFindings[0])).not.toContain("support-api.agentcsp-demo.example.invalid");
     expect(JSON.stringify(openApiPromptContentEgressFindings[0])).not.toContain("/customers/{customer_id}/messages");
@@ -17822,7 +17826,7 @@ describe("rule engine", () => {
     const fixtureRoot = await createLocalRulesFixture();
     const result = await scanProject({
       root_path: fixtureRoot,
-      output_path: "/private/tmp/agentcsp-local-rules-output",
+      output_path: tempPath("agentcsp-local-rules-output"),
       formats: ["json", "md", "sarif"],
       include_hidden: true,
       include_logs: false,
@@ -17850,7 +17854,7 @@ describe("rule engine", () => {
 });
 
 async function createLocalRulesFixture(): Promise<string> {
-  const root = "/private/tmp/agentcsp-local-rules-fixture";
+  const root = tempPath("agentcsp-local-rules-fixture");
   await fs.rm(root, { recursive: true, force: true });
   await fs.mkdir(path.join(root, "rules"), { recursive: true });
   await fs.writeFile(path.join(root, "AGENTS.md"), "Review repository changes only.\n", "utf8");

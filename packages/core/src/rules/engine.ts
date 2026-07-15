@@ -39,7 +39,7 @@ export async function loadRules(rulesDirectory: string): Promise<Rule[]> {
     if (!entry.isFile()) continue;
     if (!entry.name.endsWith(".yaml") && !entry.name.endsWith(".yml")) continue;
     const content = await fs.readFile(absolute, "utf8");
-    rules.push(RuleSchema.parse(YAML.parse(content)));
+    rules.push(normalizeRule(RuleSchema.parse(YAML.parse(content)), "built_in"));
   }
   return rules.sort((a, b) => a.id.localeCompare(b.id));
 }
@@ -69,6 +69,11 @@ export function runRules(surfaces: DetectedSurfaces, rules: Rule[]): Finding[] {
           severity,
           confidence: confidence.level,
           confidence_rationale: confidence.rationale,
+          origin: rule.origin ?? "built_in",
+          maturity: rule.maturity ?? "experimental",
+          disposition: rule.disposition ?? "advisory",
+          suppressibility: rule.suppressibility ?? "policy",
+          support_tier: rule.support_tier ?? "heuristic",
           matched_object: object,
           file_path: object.path,
           reason: rule.description,
@@ -220,7 +225,7 @@ async function loadRulesWithDiagnosticsInto(
 
     try {
       const content = await fs.readFile(absolute, "utf8");
-      const rule = RuleSchema.parse(YAML.parse(content));
+      const rule = normalizeRule(RuleSchema.parse(YAML.parse(content)), "project");
       result.rules.push(rule);
       result.pathsByRuleId.set(rule.id, absolute);
     } catch (error) {
@@ -319,10 +324,48 @@ function confidenceForMatch(
     rationale.push("redacted content signals analyzed");
   }
 
-  if (score >= 80) return { level: "very_high", rationale };
-  if (score >= 55) return { level: "high", rationale };
-  if (score >= 25) return { level: "medium", rationale };
-  return { level: "low", rationale };
+  const calculated = score >= 80 ? "very_high" : score >= 55 ? "high" : score >= 25 ? "medium" : "low";
+  const level = capConfidenceForSupport(calculated, rule.support_tier ?? "heuristic");
+  if (level !== calculated) {
+    rationale.push(`confidence capped at ${level} because evidence support is ${rule.support_tier ?? "heuristic"}`);
+  }
+  return { level, rationale };
+}
+
+function capConfidenceForSupport(
+  confidence: Confidence,
+  supportTier: NonNullable<Rule["support_tier"]>
+): Confidence {
+  if (supportTier === "typed_path") return confidence;
+  if (supportTier === "structured" && confidence === "very_high") return "high";
+  if (supportTier === "heuristic" && (confidence === "very_high" || confidence === "high")) return "medium";
+  return confidence;
+}
+
+function normalizeRule(rule: Rule, origin: NonNullable<Rule["origin"]>): Rule {
+  if (origin === "project") {
+    return {
+      ...rule,
+      origin,
+      maturity: "experimental",
+      disposition: "advisory",
+      suppressibility: "policy",
+      support_tier: rule.support_tier ?? "heuristic"
+    };
+  }
+  const maturity = rule.maturity ?? "experimental";
+  const supportTier = rule.support_tier ?? "heuristic";
+  // v0.2 has no independently calibrated blocking registry. A rule file cannot make itself enforcement-eligible.
+  const disposition = "advisory" as const;
+  return {
+    ...rule,
+    origin,
+    maturity,
+    disposition,
+    suppressibility:
+      rule.suppressibility ?? "policy",
+    support_tier: supportTier
+  };
 }
 
 function matchesRule(object: SurfaceObject, rule: Rule): boolean {

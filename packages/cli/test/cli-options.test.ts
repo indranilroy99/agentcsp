@@ -2,8 +2,19 @@ import { describe, expect, it, vi } from "vitest";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { runScanCommand } from "../src/commands/scan.js";
+import { isVersionAtLeast } from "../src/commands/doctor.js";
+import { tempPath } from "./temp-path.js";
 
 describe("cli options", () => {
+  it("accepts scanner versions at or above a pack minimum", () => {
+    expect(isVersionAtLeast("0.2.0", "0.2.0")).toBe(true);
+    expect(isVersionAtLeast("0.2.1", "0.2.0")).toBe(true);
+    expect(isVersionAtLeast("0.3.0", "0.2.9")).toBe(true);
+    expect(isVersionAtLeast("1.0.0", "0.99.99")).toBe(true);
+    expect(isVersionAtLeast("0.1.9", "0.2.0")).toBe(false);
+    expect(isVersionAtLeast("invalid", "0.2.0")).toBe(false);
+  });
+
   it("rejects unsupported fail-on values", async () => {
     const spy = vi.spyOn(console, "log").mockImplementation(() => undefined);
     await expect(
@@ -12,7 +23,7 @@ describe("cli options", () => {
         format: "json",
         quiet: true
       })
-    ).rejects.toThrow("--fail-on must be one of critical, high, medium, or low");
+    ).rejects.toThrow("--fail-on has an unsupported severity");
     spy.mockRestore();
   });
 
@@ -22,7 +33,7 @@ describe("cli options", () => {
         format: "json,xml",
         quiet: true
       })
-    ).rejects.toThrow("Expected json,md,sarif");
+    ).rejects.toThrow('Unsupported output format "xml"');
   });
 
   it("rejects the scan root as the output directory", async () => {
@@ -44,7 +55,7 @@ describe("cli options", () => {
         format: "json",
         quiet: true
       })
-    ).rejects.toThrow("--fail-on-confidence must be one of very_high, high, medium, or low");
+    ).rejects.toThrow("--fail-on-confidence has an unsupported confidence");
   });
 
   it("rejects unsupported fail-on scan health values", async () => {
@@ -54,7 +65,7 @@ describe("cli options", () => {
         format: "json",
         quiet: true
       })
-    ).rejects.toThrow("--fail-on-scan-health must be one of degraded or incomplete");
+    ).rejects.toThrow("--fail-on-scan-health has an unsupported threshold");
   });
 
   it("requires fail-on when fail-on confidence is set", async () => {
@@ -64,18 +75,18 @@ describe("cli options", () => {
         format: "json",
         quiet: true
       })
-    ).rejects.toThrow("--fail-on-confidence requires --fail-on");
+    ).rejects.toThrow("--fail-on-confidence has no severity gate");
   });
 
   it("requires fail-on when fail-on-new is set", async () => {
     await expect(
       runScanCommand(".", {
-        baseline: "/private/tmp/agentcsp-baseline.json",
+        baseline: tempPath("agentcsp-baseline.json"),
         failOnNew: true,
         format: "json",
         quiet: true
       })
-    ).rejects.toThrow("--fail-on-new requires --fail-on");
+    ).rejects.toThrow("--fail-on-new has no severity gate");
   });
 
   it("requires a baseline when fail-on-new is set", async () => {
@@ -86,14 +97,14 @@ describe("cli options", () => {
         format: "json",
         quiet: true
       })
-    ).rejects.toThrow("--fail-on-new requires --baseline");
+    ).rejects.toThrow("--fail-on-new has no baseline");
   });
 
   it("fails on diagnostics only when explicitly requested", async () => {
     const root = await createDiagnosticsFixture();
     process.exitCode = undefined;
     await runScanCommand(root, {
-      out: "/private/tmp/agentcsp-cli-diagnostics-default-output",
+      out: tempPath("agentcsp-cli-diagnostics-default-output"),
       format: "json",
       quiet: true
     });
@@ -101,12 +112,12 @@ describe("cli options", () => {
 
     process.exitCode = undefined;
     await runScanCommand(root, {
-      out: "/private/tmp/agentcsp-cli-diagnostics-fail-output",
+      out: tempPath("agentcsp-cli-diagnostics-fail-output"),
       failOnDiagnostics: true,
       format: "json",
       quiet: true
     });
-    expect(process.exitCode).toBe(1);
+    expect(process.exitCode).toBe(3);
     process.exitCode = undefined;
   });
 
@@ -114,7 +125,7 @@ describe("cli options", () => {
     const root = await createOversizedFileFixture();
     process.exitCode = undefined;
     await runScanCommand(root, {
-      out: "/private/tmp/agentcsp-cli-scan-health-default-output",
+      out: tempPath("agentcsp-cli-scan-health-default-output"),
       format: "json",
       maxFileSize: 16,
       quiet: true
@@ -123,19 +134,19 @@ describe("cli options", () => {
 
     process.exitCode = undefined;
     await runScanCommand(root, {
-      out: "/private/tmp/agentcsp-cli-scan-health-fail-output",
+      out: tempPath("agentcsp-cli-scan-health-fail-output"),
       failOnScanHealth: "degraded",
       format: "json",
       maxFileSize: 16,
       quiet: true
     });
-    expect(process.exitCode).toBe(1);
+    expect(process.exitCode).toBe(3);
     process.exitCode = undefined;
   });
 
   it("emits diagnostics for explicitly missing policy configs", async () => {
     const root = await createPolicyConfigFixture();
-    const outputPath = "/private/tmp/agentcsp-cli-missing-policy-output";
+    const outputPath = tempPath("agentcsp-cli-missing-policy-output");
     process.exitCode = undefined;
     await runScanCommand(root, {
       out: outputPath,
@@ -183,30 +194,26 @@ describe("cli options", () => {
     process.exitCode = undefined;
   });
 
-  it("prints scan health and bounded preview metadata in interactive summaries", async () => {
+  it("prints a compact receipt and verbose operational counters", async () => {
     const root = await createCliSummaryFixture();
-    const outputPath = "/private/tmp/agentcsp-cli-summary-output";
+    const outputPath = tempPath("agentcsp-cli-summary-output");
     const spy = vi.spyOn(console, "log").mockImplementation(() => undefined);
     process.exitCode = undefined;
 
     await runScanCommand(root, {
       out: outputPath,
       format: "json",
-      quiet: false
+      quiet: false,
+      banner: false,
+      verbose: true
     });
 
     const output = spy.mock.calls.map((call) => call.join(" ")).join("\n");
-    expect(output).toContain("Scan health: complete (no health issues)");
-    expect(output).toContain("Triage: 0 active, highest severity: info, max risk score: 0");
-    expect(output).toContain("Triage preview: top 10 risks, truncated: false");
-    expect(output).toContain("Action plan: 0 action(s), immediate: 0, truncated: false");
-    expect(output).toContain("Blast-radius preview: 0/0 high-risk object(s), truncated: false");
-    expect(output).toContain("Attack-path preview: 15 limit, 0 total, truncated: false");
-    expect(output).toContain("CI gate: pass (failed gates: none)");
-    expect(output).toContain(
-      "CI blockers: severity critical=0, high=0, medium=0, low=0, info=0, confidence very_high=0, high=0, medium=0, low=0, active suppressions critical=0, high=0, medium=0, low=0, info=0, expired suppressions critical=0, high=0, medium=0, low=0, info=0, truncated: false"
-    );
-    expect(output).toContain("CI risk drivers: severity none, expired suppressions none");
+    expect(output).toContain("[PASS] 0 active finding(s), highest info; coverage complete; gate pass");
+    expect(output).toContain("Findings: 0; attack paths: 0");
+    expect(output).toContain("Files: 1 indexed, 0 oversized; diagnostics: 0");
+    expect(output).toContain("Failed gates: none");
+    expect(output).toContain("Manifest:");
 
     spy.mockRestore();
     process.exitCode = undefined;
@@ -214,7 +221,7 @@ describe("cli options", () => {
 });
 
 async function createDiagnosticsFixture(): Promise<string> {
-  const root = "/private/tmp/agentcsp-cli-diagnostics-fixture";
+  const root = tempPath("agentcsp-cli-diagnostics-fixture");
   await fs.rm(root, { recursive: true, force: true });
   await fs.mkdir(path.join(root, ".codex"), { recursive: true });
   await fs.writeFile(path.join(root, "AGENTS.md"), "Review repository changes only.\n", "utf8");
@@ -224,7 +231,7 @@ async function createDiagnosticsFixture(): Promise<string> {
 }
 
 async function createPolicyConfigFixture(): Promise<string> {
-  const root = "/private/tmp/agentcsp-cli-policy-config-fixture";
+  const root = tempPath("agentcsp-cli-policy-config-fixture");
   await fs.rm(root, { recursive: true, force: true });
   await fs.mkdir(root, { recursive: true });
   await fs.writeFile(path.join(root, "AGENTS.md"), "Review repository changes only.\n", "utf8");
@@ -232,7 +239,7 @@ async function createPolicyConfigFixture(): Promise<string> {
 }
 
 async function createOversizedFileFixture(): Promise<string> {
-  const root = "/private/tmp/agentcsp-cli-oversized-fixture";
+  const root = tempPath("agentcsp-cli-oversized-fixture");
   await fs.rm(root, { recursive: true, force: true });
   await fs.mkdir(root, { recursive: true });
   await fs.writeFile(path.join(root, "AGENTS.md"), "Review repository changes only.\n", "utf8");
@@ -241,7 +248,7 @@ async function createOversizedFileFixture(): Promise<string> {
 }
 
 async function createRelativeBaselineFixture(): Promise<string> {
-  const root = "/private/tmp/agentcsp-cli-relative-baseline-fixture";
+  const root = tempPath("agentcsp-cli-relative-baseline-fixture");
   await fs.rm(root, { recursive: true, force: true });
   await fs.mkdir(path.join(root, "baselines"), { recursive: true });
   await fs.writeFile(path.join(root, "AGENTS.md"), "Review repository changes only.\n", "utf8");
@@ -250,7 +257,7 @@ async function createRelativeBaselineFixture(): Promise<string> {
 }
 
 async function createCliSummaryFixture(): Promise<string> {
-  const root = "/private/tmp/agentcsp-cli-summary-fixture";
+  const root = tempPath("agentcsp-cli-summary-fixture");
   await fs.rm(root, { recursive: true, force: true });
   await fs.mkdir(root, { recursive: true });
   await fs.writeFile(path.join(root, "AGENTS.md"), "Review repository changes only.\n", "utf8");

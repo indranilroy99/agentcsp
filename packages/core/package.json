@@ -1,7 +1,7 @@
 {
   "name": "@agentcsp/core",
-  "version": "0.1.0",
-  "description": "Core scanner, manifest, policy, rule, risk, and reporting engine for AgentCSP.",
+  "version": "0.2.0",
+  "description": "Local-first AI agent security scanner, manifest, policy, rule, graph, and reporting engine.",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
@@ -29,6 +29,10 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

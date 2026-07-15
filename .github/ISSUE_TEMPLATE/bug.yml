@@ -1,0 +1,59 @@
+name: Bug report
+description: Report a reproducible scanner, CLI, schema, or artifact defect.
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: Do not include secrets, customer data, private prompts, internal URLs, or raw production artifacts.
+  - type: input
+    id: version
+    attributes:
+      label: AgentCSP version
+      description: Paste `agentcsp version --json` output after reviewing it for local paths.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Scanner discovery
+        - Rule evaluation
+        - Policy or suppression
+        - Baseline
+        - JSON, Markdown, or SARIF output
+        - CLI lifecycle command
+        - Packaging or installation
+        - Documentation
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal sanitized reproduction
+      description: Include commands, synthetic fixture content, exit code, and relevant diagnostics.
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety check
+      options:
+        - label: I removed secrets, private repository content, customer data, and internal URLs.
+          required: true
+        - label: This is not a vulnerability report. Vulnerabilities use private reporting.
+          required: true

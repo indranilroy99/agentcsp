@@ -1,74 +1,130 @@
 # CI Integration
 
-AgentCSP is designed to be introduced without breaking existing pipelines, then tightened as teams establish ownership for findings and suppressions.
+AgentCSP supports progressive rollout. A completed advisory scan exits successfully even when findings exist; finding gates are explicit.
 
-## GitHub Code Scanning
+## GitHub Actions Examples
 
-Use the advisory workflow when introducing AgentCSP to an existing repository:
+- [`github-code-scanning-advisory.yml`](../examples/ci/github-code-scanning-advisory.yml) scans and uploads SARIF without a finding gate.
+- [`github-code-scanning-gated.yml`](../examples/ci/github-code-scanning-gated.yml) uses `ci-strict`, uploads SARIF even when a gate fails, then preserves the scanner exit decision.
 
-```text
-examples/ci/github-code-scanning-advisory.yml
-```
-
-It emits JSON, Markdown, and SARIF, then uploads SARIF to GitHub code scanning. It does not enable fail gates, so a completed scan exits successfully even when findings exist.
-
-Use the gated workflow when the repository is ready to enforce policy:
-
-```text
-examples/ci/github-code-scanning-gated.yml
-```
-
-It uploads SARIF even when AgentCSP finds gate-blocking risk, then fails the job after upload. This keeps GitHub code scanning populated while preserving a hard CI gate.
-
-## Recommended Gate Progression
-
-Start with:
-
-```bash
-agentcsp scan . --out .agentcsp --format json,md,sarif --quiet
-```
-
-Then add scan-health controls:
-
-```bash
-agentcsp scan . \
-  --out .agentcsp \
-  --format json,md,sarif \
-  --fail-on-diagnostics \
-  --fail-on-expired-suppressions \
-  --fail-on-scan-health degraded \
-  --quiet
-```
-
-For mature repositories, add severity and confidence gates:
-
-```bash
-agentcsp scan . \
-  --out .agentcsp \
-  --format json,md,sarif \
-  --fail-on high \
-  --fail-on-confidence high \
-  --fail-on-diagnostics \
-  --fail-on-expired-suppressions \
-  --fail-on-scan-health degraded \
-  --quiet
-```
-
-When an existing baseline is already accepted, add `--baseline` and `--fail-on-new` so CI blocks newly introduced high-confidence risk without forcing a full backlog burn-down in the first rollout.
-
-## Version Pinning
-
-The example workflows use:
+The examples pin:
 
 ```yaml
 env:
-  AGENTCSP_VERSION: 0.1.0
+  AGENTCSP_VERSION: 0.2.0
 ```
 
-Keep this pinned to a reviewed AgentCSP release. Avoid unpinned `latest` in regulated or production repositories.
+Review and update this value deliberately. Do not use `latest` in a protected workflow.
 
-## Machine-Readable Gate State
+## Rollout
 
-Every scan writes `ci_gate_summary` to `agent-manifest.json`, the Markdown report, and SARIF run properties as `agentcsp_ci_gate_summary`.
+Start with advisory evidence:
 
-Use that summary to explain whether a gate failed because of severity thresholds, new findings, expired suppressions, diagnostics, or scan health. It includes severity, confidence, and risk-driver mixes for severity-gated findings, severity and scope mixes for active suppressions excluded from severity gates, broad active suppression counts, diagnostic mix by severity/parser/code, and severity plus risk-driver mixes for expired suppressions, so CI dashboards can show blocker, parser-health, and accepted-risk shape without parsing every finding or diagnostic. It also includes bounded ID lists for severity-gated findings, broad active suppressions, expired suppressions, and diagnostics so CI systems can link directly to the relevant AgentCSP records without reimplementing gate logic. `blocker_id_limit` and the `*_ids_truncated` flags make it explicit when those lists are previews rather than complete inventories. The summary also records the configured `fail_on_scan_health` threshold, actual `scan_health`, and stable `scan_health_reasons`. The summary does not include raw evidence snippets or secret values.
+```bash
+agentcsp scan . \
+  --ruleset recommended \
+  --out .agentcsp \
+  --format json,md,sarif \
+  --quiet
+```
+
+Then protect scanner completeness and inputs:
+
+```bash
+agentcsp scan . \
+  --profile ci-strict \
+  --ruleset recommended \
+  --out .agentcsp \
+  --format json,md,sarif \
+  --quiet
+```
+
+Finally, opt into the finding policy your team has reviewed:
+
+```bash
+agentcsp scan . \
+  --profile ci-strict \
+  --ruleset recommended \
+  --fail-on high \
+  --fail-on-confidence high \
+  --out .agentcsp \
+  --format json,md,sarif \
+  --quiet
+```
+
+No v0.2 rule is independently calibrated for automatic blocking. `--fail-on` is an operator-selected severity and confidence policy. See [Detection Quality](detection-quality.md).
+
+## Strict Input Trust
+
+The scanned pull request is an untrusted boundary. `ci-strict` ignores:
+
+- repository `agentcsp.yaml`
+- repository `rules/`
+- repository `.agentcspignore`
+
+Use policy stored outside the checkout and pin its content digest:
+
+```bash
+agentcsp scan . \
+  --profile ci-strict \
+  --config /opt/security/agentcsp.yaml \
+  --config-sha256 "$AGENTCSP_POLICY_SHA256" \
+  --out .agentcsp \
+  --format json,md,sarif \
+  --quiet
+```
+
+The scanner resolves symlinks, requires a regular file outside the scan root, enforces size limits, and parses the exact bytes read and SHA-256 verified through the opened file handle.
+
+Apply the same model to a protected baseline:
+
+```bash
+agentcsp scan . \
+  --profile ci-strict \
+  --baseline /opt/security/agentcsp-baseline.json \
+  --baseline-sha256 "$AGENTCSP_BASELINE_SHA256" \
+  --fail-on-new \
+  --fail-on high \
+  --fail-on-confidence high \
+  --quiet
+```
+
+## Baseline Adoption
+
+Create a baseline only from reviewed findings:
+
+```bash
+agentcsp baseline create .agentcsp/findings.json --out agentcsp-baseline.json
+```
+
+Store the baseline where pull-request code cannot modify it. `--fail-on-new` requires both `--baseline` and `--fail-on`.
+
+## SARIF
+
+SARIF is written to `.agentcsp/agentcsp.sarif` when requested. Stage it with `if: always()` so findings remain available when a later gate fails.
+
+The examples keep the scan job read-only, stage SARIF as a workflow artifact, and grant `security-events: write` only to a separate publication job. For pull requests from forks, that publication job is skipped while the scan still runs without write authority.
+
+## Gate State
+
+`ci_gate_summary` is emitted in the manifest, Markdown report, and SARIF run properties. It records:
+
+- configured severity, confidence, baseline, diagnostic, suppression, and scan-health gates
+- failed gate names
+- bounded blocker and diagnostic IDs with truncation flags
+- active and expired suppression posture
+- actual scan health and stable reasons
+
+Automation should consume this object instead of recreating AgentCSP's gate logic.
+
+## Exit Codes
+
+| Code | CI meaning |
+| ---: | --- |
+| `0` | Scan completed and configured gates passed |
+| `1` | Configured finding gate failed |
+| `2` | Invalid configuration or input |
+| `3` | Scanner integrity, coverage, diagnostic, suppression, or packaged-artifact gate failed |
+| `4` | Unexpected internal failure |
+
+Treat `2`, `3`, and `4` as tool failures, not security findings.

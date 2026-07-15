@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
-import { AgentManifestSchema, FindingSchema } from "../packages/core/dist/schemas/index.js";
+import { AgentManifestArtifactSchema, FindingArtifactSchema } from "../packages/core/dist/schemas/index.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -53,22 +53,23 @@ try {
   const rawFindings = await fs.readFile(path.join(outputPath, "findings.json"), "utf8");
   const rawReport = await fs.readFile(path.join(outputPath, "report.md"), "utf8");
   const rawSarif = await fs.readFile(path.join(outputPath, "agentcsp.sarif"), "utf8");
-  const manifest = AgentManifestSchema.parse(JSON.parse(rawManifest));
-  const findings = FindingSchema.array().parse(JSON.parse(rawFindings));
+  const manifest = AgentManifestArtifactSchema.parse(JSON.parse(rawManifest));
+  const findings = FindingArtifactSchema.array().parse(JSON.parse(rawFindings));
   const sarif = JSON.parse(rawSarif);
 
   const finding = findings.find((item) => item.rule_id === "AGENTCSP-RUNTIME-001" && item.policy_control);
   assert(finding, "policy-control scan did not produce the expected runtime finding");
   assertEqual(finding.recommended_control, "deny", "policy-control finding did not apply deny control");
-  assertEqual(finding.policy_control.reason, sensitivePolicyReason, "JSON finding did not retain audit reason");
+  assertEqual(finding.policy_control.reason, "[redacted in portable artifact]", "JSON finding policy reason redaction");
   assertEqual(finding.policy_control.match_scope, "rule_and_path", "JSON finding policy match scope");
   assertEqual(finding.policy_control.change_direction, "strengthened", "JSON finding policy direction");
-  assert(JSON.stringify(manifest.findings).includes(sensitivePolicyReason), "manifest findings did not retain audit reason");
+  assert(!JSON.stringify(manifest.findings).includes(sensitivePolicyReason), "manifest findings leaked policy reason");
+  assert(!rawFindings.includes(sensitivePolicyReason), "findings.json leaked policy reason");
 
   assert(!rawReport.includes(sensitivePolicyReason), "Markdown report leaked policy-control reason");
   assert(rawReport.includes("policy override from require approval to deny"), "Markdown report missing policy override summary");
-  assert(rawReport.includes("direction: strengthened"), "Markdown report missing policy direction");
-  assert(rawReport.includes("scope: rule and path"), "Markdown report missing policy match scope");
+  assert(rawReport.includes("direction&#58; strengthened"), "Markdown report missing policy direction");
+  assert(rawReport.includes("scope&#58; rule and path"), "Markdown report missing policy match scope");
   assert(rawReport.includes("reason redacted"), "Markdown report missing policy reason redaction marker");
 
   assert(!rawSarif.includes(sensitivePolicyReason), "SARIF leaked policy-control reason");

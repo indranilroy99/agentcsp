@@ -1,4 +1,8 @@
 id: AGENTCSP-CICD-001
+maturity: stable
+disposition: advisory
+suppressibility: policy
+support_tier: structured
 name: CI workflow exposes external or secret-backed authority
 description: A CI/CD workflow references secrets or external systems and may become part of the agent blast radius.
 category: ci_cd_authority

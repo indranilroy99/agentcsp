@@ -1,4 +1,8 @@
 id: AGENTCSP-AUTOMATION-003
+maturity: stable
+disposition: advisory
+suppressibility: policy
+support_tier: structured
 name: Untrusted workflow event input reaches privileged agent automation
 description: A workflow passes issue, pull request, discussion, or repository-dispatch payload text into an agent job that also has secrets and write authority, creating a direct path from external content to privileged agent execution.
 category: automation_authority

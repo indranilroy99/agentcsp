@@ -3,6 +3,8 @@ import type { Dirent } from "node:fs";
 import path from "node:path";
 import {
   DEFAULT_INCLUDED_HIDDEN_DIRS,
+  DEFAULT_MAX_DIRECTORIES,
+  DEFAULT_MAX_ENTRIES_PER_DIRECTORY,
   DEFAULT_MAX_FILE_SIZE_BYTES,
   DEFAULT_MAX_FILES,
   LOG_DIR_NAMES
@@ -34,10 +36,25 @@ export async function walkProject(config: ScanConfig): Promise<WalkedFile[]> {
 export async function walkProjectWithCoverage(config: ScanConfig): Promise<WalkResult> {
   const rootPath = path.resolve(config.root_path);
   const outputIgnorePattern = outputPathIgnorePattern(rootPath, config.output_path);
-  const ignore = IgnoreMatcher.load(rootPath, outputIgnorePattern ? [outputIgnorePattern] : []);
+  const ignore = IgnoreMatcher.load(rootPath, outputIgnorePattern ? [outputIgnorePattern] : [], {
+    includeProjectIgnore: config.profile !== "ci_strict"
+  });
   const files: WalkedFile[] = [];
   const diagnostics: ScanDiagnostic[] = [];
+  if (config.profile === "ci_strict" && (await pathExists(path.join(rootPath, ".agentcspignore")))) {
+    diagnostics.push({
+      id: stableId("diagnostic", ["PROJECT_IGNORE_IGNORED", ".agentcspignore"]),
+      severity: "info",
+      code: "PROJECT_IGNORE_IGNORED",
+      file_path: ".agentcspignore",
+      parser: "scanner",
+      reason: "Repository .agentcspignore was discovered but not applied by the ci_strict profile.",
+      content_redacted: true
+    });
+  }
   const maxFiles = config.max_files ?? DEFAULT_MAX_FILES;
+  const maxDirectories = config.max_directories ?? DEFAULT_MAX_DIRECTORIES;
+  const maxEntriesPerDirectory = config.max_entries_per_directory ?? DEFAULT_MAX_ENTRIES_PER_DIRECTORY;
   const maxFileSize = config.max_file_size_bytes ?? DEFAULT_MAX_FILE_SIZE_BYTES;
   const coverage: ScanCoverageSummary = {
     title: "AgentCSP Scan Coverage",
@@ -51,16 +68,22 @@ export async function walkProjectWithCoverage(config: ScanConfig): Promise<WalkR
     directories_skipped_by_ignore: 0,
     directories_skipped_hidden: 0,
     directories_skipped_logs: 0,
+    directories_skipped_for_entry_limit: 0,
     diagnostics_total: 0,
     diagnostics_errors: 0,
     diagnostics_warnings: 0,
     diagnostics_info: 0,
     max_files_reached: false,
     max_files: maxFiles,
+    max_directories_reached: false,
+    max_directories: maxDirectories,
+    max_entries_per_directory: maxEntriesPerDirectory,
     max_file_size_bytes: maxFileSize,
     skipped_path_limit: skippedPathPreviewLimit,
     oversized_file_paths: [],
-    oversized_file_paths_truncated: false
+    oversized_file_paths_truncated: false,
+    directory_entry_limit_paths: [],
+    directory_entry_limit_paths_truncated: false
   };
 
   async function visit(directory: string): Promise<void> {
@@ -69,15 +92,33 @@ export async function walkProjectWithCoverage(config: ScanConfig): Promise<WalkR
       return;
     }
 
-    let entries: Dirent[];
+    if (coverage.directories_visited >= maxDirectories) {
+      coverage.max_directories_reached = true;
+      return;
+    }
+
+    const entries: Dirent[] = [];
     try {
-      entries = await fs.readdir(directory, { withFileTypes: true });
+      const handle = await fs.opendir(directory);
+      coverage.directories_visited += 1;
+      for await (const entry of handle) {
+        if (entries.length >= maxEntriesPerDirectory) {
+          coverage.directories_skipped_for_entry_limit += 1;
+          const rel = relativePath(rootPath, directory);
+          if (coverage.directory_entry_limit_paths.length < skippedPathPreviewLimit) {
+            coverage.directory_entry_limit_paths.push(rel);
+          } else {
+            coverage.directory_entry_limit_paths_truncated = true;
+          }
+          return;
+        }
+        entries.push(entry);
+      }
     } catch (error) {
       if (path.resolve(directory) === rootPath) throw error;
       diagnostics.push(walkDiagnostic(rootPath, directory, "SCAN_DIRECTORY_READ_FAILED"));
       return;
     }
-    coverage.directories_visited += 1;
     const sortedEntries = entries.sort((a, b) => a.name.localeCompare(b.name));
 
     for (const entry of sortedEntries) {
@@ -103,6 +144,10 @@ export async function walkProjectWithCoverage(config: ScanConfig): Promise<WalkR
         }
         if (LOG_DIR_NAMES.has(entry.name.toLowerCase()) && !config.include_logs) {
           coverage.directories_skipped_logs += 1;
+          continue;
+        }
+        if (coverage.directories_visited >= maxDirectories) {
+          coverage.max_directories_reached = true;
           continue;
         }
         await visit(absolutePath);
@@ -144,6 +189,7 @@ export async function walkProjectWithCoverage(config: ScanConfig): Promise<WalkR
   await visit(rootPath);
   const sortedFiles = files.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
   coverage.oversized_file_paths = [...coverage.oversized_file_paths].sort((a, b) => a.localeCompare(b));
+  coverage.directory_entry_limit_paths = [...coverage.directory_entry_limit_paths].sort((a, b) => a.localeCompare(b));
   coverage.files_indexed = sortedFiles.length;
   return {
     files: sortedFiles,
@@ -152,10 +198,25 @@ export async function walkProjectWithCoverage(config: ScanConfig): Promise<WalkR
   };
 }
 
+async function pathExists(candidate: string): Promise<boolean> {
+  try {
+    await fs.access(candidate);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function withWalkHealth(coverage: ScanCoverageSummary): ScanCoverageSummary {
-  const scan_health = coverage.max_files_reached ? "incomplete" : coverage.files_skipped_for_size > 0 ? "degraded" : "complete";
+  const incomplete =
+    coverage.max_files_reached ||
+    coverage.max_directories_reached ||
+    coverage.directories_skipped_for_entry_limit > 0;
+  const scan_health = incomplete ? "incomplete" : coverage.files_skipped_for_size > 0 ? "degraded" : "complete";
   const scan_health_reasons = [
     ...(coverage.max_files_reached ? ["max_files_reached"] : []),
+    ...(coverage.max_directories_reached ? ["max_directories_reached"] : []),
+    ...(coverage.directories_skipped_for_entry_limit > 0 ? ["directory_entry_limit_reached"] : []),
     ...(coverage.files_skipped_for_size > 0 ? ["files_skipped_for_size"] : [])
   ];
   return { ...coverage, scan_health, scan_health_reasons };

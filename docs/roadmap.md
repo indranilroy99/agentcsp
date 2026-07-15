@@ -1,110 +1,77 @@
 # Roadmap
 
-## Phase 0: Project Foundation
+AgentCSP is focused on AI agent security. General software supply-chain scanning is outside the product scope.
 
-- Create project structure.
-- Define product brief and architecture.
-- Define initial manifest and rule schemas.
-- Choose implementation stack.
+## v0.2: Trustworthy CLI Foundation
 
-## Phase 1: CLI MVP
+Status: release candidate.
 
-- Scan local project folders for AI agent surfaces.
-- Parse skills, plugin manifests, MCP configs, agent instructions, env references, CI workflows, and common RAG/memory paths.
-- Generate `agent-manifest.json`.
-- Run built-in static rules.
-- Produce JSON and Markdown reports.
+- local repository scanner for instructions, skills, plugins, MCP, tools, runtime, CI, RAG, memory, env references, and automations
+- versioned manifest, findings, evidence, baseline, identity, and artifact receipt contracts
+- bounded recommended pack and complete extended research catalog
+- advisory and protected `ci-strict` profiles
+- portable and internal artifact profiles
+- deterministic IDs, ordering, fingerprints, compact references, and transactional output
+- JSON, Markdown, and SARIF
+- static relationships, bounded attack paths, and Static Blast-Radius Summary
+- lifecycle commands for config, rules, baselines, doctor, and compatibility metadata
+- safe and vulnerable fixtures, redaction invariants, package smoke tests, and a measured 5,000-file/100 MiB envelope
 
-## Phase 2: Blast Radius and Policy
+Release criteria:
 
-- Add permission and side-effect classification.
-- Build graph-based blast-radius analysis.
-- Add `agentcsp.yaml` policy files.
-- Add `agentcsp.yaml` policy-integrity posture for broad suppressions, permissive control downgrades, and risky trust overrides.
-- Add A2A and public agent-card exposure posture for external discovery, anonymous caller access, privileged capability categories, rate limits, and approval gates.
-- Add public agent chat/widget ingress posture for anonymous messages and uploads, auth/CORS/CSRF/rate-limit/abuse controls, automatic tool invocation, privileged authority categories, redaction, credentials, and approval boundaries.
-- Add agent debug/playground console posture for exposed system/developer prompts, raw context, traces, memory, tool schemas, prompt editing, impersonation, live privileged tool invocation, redaction, audit logging, credentials, and approval boundaries.
-- Add agent response-stream disclosure posture for public client-visible reasoning, prompts, tool outputs, tool arguments, retrieval chunks, memory context, secrets, redaction, credentials, and approval boundaries.
-- Add model-output action-router posture for action DSLs, command parsers, lenient schema validation, JSON repair, batch auto-execution, privileged tool authority, dry-run controls, redaction, credentials, and approval boundaries.
-- Add outbound remote-agent federation posture for dynamic A2A discovery, model-selected peers, sensitive context forwarding, credential forwarding, peer verification, allowlists, and approval gates.
-- Add remote prompt-registry posture for auto-synced system/developer prompts, unpinned revisions, verification controls, and untrusted prompt selectors.
-- Add remote instruction-loader posture for auto-refreshed system/developer instructions, unpinned revisions, verification controls, untrusted selectors, privileged tool authority, and approval boundaries.
-- Add MCP prompt and resource context inventory for model-visible server-supplied context that can steer privileged MCP authority.
-- Add MCP client-context posture for roots, sampling, and elicitation requests from remote or third-party servers.
-- Add MCP environment-inheritance posture for ambient process env, wildcard env passthrough, sensitive env patterns, and external MCP boundaries.
-- Add MCP OAuth authorization posture for dynamic client registration, PKCE/state/resource-indicator controls, broad scopes, refresh-token storage, token forwarding, and untrusted server selection.
-- Add MCP dynamic tool-catalog posture for mutable remote tool discovery, model-visible descriptions, remote schema trust, pinning, signature/provenance verification, review posture, privileged tool categories, and approval boundaries.
-- Add MCP resource-subscription posture for live resource watches, server-pushed updates, model-visible context injection, raw-content passthrough, sanitization/redaction controls, provenance verification, privileged follow-up authority, and approval boundaries.
-- Add OpenAPI and Swagger tool-import posture for authenticated external API writes, user-controlled request schemas, sensitive data categories, and approval boundaries.
-- Add hosted assistant and deployable agent-definition posture for automatic tool choice, parallel privileged tool fanout, hosted code/file/vector/function resources, sensitive context, guardrail posture, and approval boundaries.
-- Add realtime and voice agent session posture for external callers, raw audio and transcript capture, recording redaction, prompt-injection filtering, privileged tool authority, and approval boundaries.
-- Add live session-sharing and collaboration posture for public links, anonymous or external collaborators, prompt/tool/approval control, replay/handoff behavior, sensitive capture, redaction posture, and approval boundaries.
-- Add agent web/network egress posture for private network, localhost, cloud metadata service, wildcard destination, untrusted URL source, credential/header forwarding, redirects, DNS rebinding, response capture, and approval boundaries.
-- Add computer-use and desktop automation posture for signed-in host sessions, screen/OCR capture, keyboard/mouse control, clipboard access, file transfer, remote desktop endpoints, credential-store exposure, redaction posture, and approval boundaries.
-- Add agent authorization-broker posture for model-selected tool grants, dynamic resource scopes, default-allow/fail-open decisions, audit posture, credential exposure, and approval boundaries.
-- Add runtime posture inventory for sandbox, approval, network, tool authority, disabled safety controls, fail-open agent safety fallback posture, and model-only guardrail enforcement.
-- Add browser extension/profile and file-transfer posture for privileged extensions, password-manager/autofill exposure, upload/download authority, approval gates, and download/upload path redaction.
-- Add identity delegation posture for agent OAuth, OIDC, service-account, workload-identity, and token-broker authority.
-- Add cloud control-plane authority posture for agent IAM, compute, storage, secret, audit-log, IaC, and auto-remediation authority.
-- Add dynamic extension-loader posture for remote skills, plugins, tools, prompts, and MCP capabilities.
-- Add self-modification posture for agent-controlled prompt, policy, runtime, tool, memory, and workflow writes.
-- Add approval-gate integrity posture for model-mediated decisions, external approval channels, channel authentication, approver identity verification, replay protection, default-allow review paths, auto-execution, and human-review boundaries.
-- Add context-composer posture for role-boundary assembly, source promotion, sanitization, delimiters, environment-secret materialization, and privileged tool exposure.
-- Add context-window and compaction posture for truncation, priority, instruction retention, safety-policy eviction, summary verification, redaction, and privileged tool exposure.
-- Add reasoning-state and scratchpad posture for chain-of-thought, planner traces, tool observations, prompts, retrieval, memory, persistence, sharing, replay, redaction, access controls, and approval boundaries.
-- Add workspace context sync posture for env files, SSH keys, cloud credentials, kubeconfig, git history, home directories, private repositories, untrusted selectors, prompt/RAG/memory sinks, remote sync, redaction, `.agentcspignore`, and approval boundaries.
-- Add agent tool retry/replay posture for automatic retries, retry budgets, replay behavior, idempotency, duplicate suppression, non-idempotent action authority, and approval boundaries.
-- Add tool-output policy posture for raw browser, shell, MCP, API, retrieval, and customer observations that can enter prompt context or request privileged follow-up actions.
-- Add visual and OCR context posture for screenshots, uploaded images, OCR text, and multimodal observations that can enter prompt context or request privileged follow-up actions.
-- Add artifact/output export posture for generated prompts, completions, tool outputs, browser artifacts, retrieval context, memory, secrets, public access, retention, and redaction boundaries.
-- Add webhook/callback egress posture for model-generated payload delivery, sensitive context capture, retry queues, redaction posture, and approval boundaries.
-- Add secret-manager prompt materialization posture for raw secret values entering system, developer, model, memory, retrieval, or tool context with redaction and approval boundaries.
-- Add background agent task-queue posture for asynchronous job consumers, untrusted queued payloads, retry and dead-letter replay, privileged tool authority, credentials, and approval boundaries.
-- Add autonomous agent loop posture for planner/executor loops, untrusted goals, auto-execution, tool-output feedback, iteration/runtime budgets, stop conditions, kill switches, dry-run mode, and approval boundaries.
-- Add container runtime isolation posture for privileged containers, Docker socket mounts, host paths, host namespaces, dangerous capabilities, untrusted inputs, and approval boundaries.
-- Add code interpreter and notebook runtime posture for model-generated code execution, network/package installation, filesystem access, credential mounts, output persistence, untrusted inputs, and approval boundaries.
-- Add AI training and fine-tuning dataset posture for prompts, completions, tool outputs, retrieval context, memory, browser context, PII, secrets, model-update authority, redaction posture, and approval boundaries.
-- Add AI feedback and RLHF pipeline posture for ratings, reviewer notes, production interactions, tool traces, retrieval, memory, PII, secrets, training/eval promotion, consent, redaction, and approval boundaries.
-- Add AI telemetry trace-sharing posture for public links, anonymous viewers, shared workspaces, RBAC/SSO controls, sensitive trace capture, redaction, credential references, and approval boundaries.
-- Add LLM prompt, response, completion, and semantic cache posture for shared cache replay, semantic reuse, user-controlled cache keys, tenant boundaries, sensitive capture, persistence, redaction posture, untrusted inputs, and approval boundaries.
-- Add AI model endpoint, public model-gateway, router, and fallback posture for provider routing, anonymous/public exposure, authentication posture, automatic failover, sensitive context forwarding, request logging, redaction posture, output recording, tool-calling authority, and approval boundaries.
-- Add AI embedding and indexing posture for third-party embedding providers, vector upserts, sensitive source capture, redaction posture, retention, and approval boundaries.
-- Add RAG ingestion poisoning posture for user uploads, ticket attachments, public web pages, and message sources that auto-index into trusted retrieval namespaces without quarantine, instruction stripping, provenance, or approval.
-- Add RAG retrieval-authorization posture for user-controlled queries and filters, broad private retrieval scope, ACL/provenance/trust filtering, prompt-injection passthrough, and tool-context injection.
-- Add agent package-manifest supply-chain posture for agent/MCP/model/RAG dependencies, risky dependency references, lifecycle scripts, and credential exposure without broad generic SCA noise.
-- Add agent deployment image-provenance posture for mutable remote images, digest pinning, pull policy, privileged host authority, service accounts, host mounts, credential exposure, and approval boundaries.
-- Support allow, deny, approval, redaction, and quarantine recommendations.
-- Add SARIF output and CI integrations for code-scanning workflows.
-- Add high-confidence correlated findings that combine provenance, data class, authority, and side effects.
+- all schemas, tests, fixtures, redaction checks, packages, CI examples, dependency audit, and scale benchmark pass
+- public claims match static behavior
+- no rule can become automatically blocking through rule-file metadata
+- npm and GitHub artifacts have checksums and provenance when published
 
-## Phase 3: Red-Team Rule Exchange
+## v0.3: Detection Precision
 
-- Define public rule format.
-- Ship core rules.
-- Add community rule packs.
-- Inventory live eval and red-team harness authority before generating app-specific adversarial tests from discovered tools and data flows.
+- replace broad adapters with typed, versioned support for leading agent and MCP configuration formats
+- split the extended catalog into explicit research packs by platform and security domain
+- publish a sanitized, versioned evaluation corpus with independent labels and adjudication records
+- add case-level detection quality reports, duplicate accounting, parser coverage, and regression history
+- promote a small number of rules only after the blocking criteria in `docs/detection-quality.md` are met
+- add graph-edge rule evaluation over finding-independent relationship facts
+- improve source locations and remediation validation steps without exposing raw content
 
-## Phase 4: Secure RAG and Memory Lab
+## v0.4: Organization Workflows
 
-- Add test fixtures for poisoned docs, logs, tool outputs, and vector records.
-- Simulate persistence, retrieval, and memory contamination.
-- Inventory memory-store authority, sharing, approval gates, access controls, tenant isolation, retention, redaction, and replay boundaries before generating runtime experiments.
-- Report whether injected instructions survive across sessions or retrieval paths.
+- signed manifest and policy bundle verification
+- organization rule packs loaded only from protected external inputs
+- baseline and suppression review workflows with ownership and expiry reporting
+- repository fleet aggregation through local or self-hosted storage
+- stable diff and migration contracts across scanner versions
+- integration contracts for GitHub, GitLab, and common security data platforms
 
-## Phase 5: OSS Bug Report Verifier
+The CLI, schemas, and scanner remain independently usable without a hosted service.
 
-- Add GitHub issue scanner.
-- Score reports for reproducibility, affected version, impact, PoC, logs, and patch guidance.
-- Output maintainer-friendly triage labels and comments.
+## Runtime Phase
 
-## Phase 6: Runtime Enforcement
+- MCP proxy and framework adapters that enforce policy outside the agent process where practical
+- pre-tool approval, deny, redaction, and quarantine controls
+- runtime reachability and observed data-flow evidence
+- signed or tamper-evident decision records
+- clear separation between static posture, deployed configuration, and observed runtime behavior
 
-- Add adapters for MCP, LangChain/LangGraph, OpenAI Agents SDK, and coding-agent hooks where feasible.
-- Enforce policy before tool calls and sensitive memory writes.
-- Emit signed or tamper-evident evidence records.
+Runtime enforcement will not reuse static severity as an authorization decision. Each adapter requires its own threat model, bypass analysis, and fail-safe behavior.
 
-## Phase 7: AgentCSP Platform
+## Platform Phase
 
-- Add a local-first platform deployment for teams that need a persistent manifest registry, policy governance, evidence history, and AI agent security inventory.
-- Support self-hosted deployment first, with optional cloud deployment for organizations that need centralized multi-repo visibility.
-- Keep CLI, schemas, rules, and scanner engine fully open and usable without the platform.
+After CLI and runtime contracts stabilize:
+
+- self-hosted manifest and evidence registry
+- agent inventory, ownership, and control coverage
+- policy lifecycle and exception governance
+- trend, regression, and deployment comparison views
+- local deployment first, with optional cloud deployment
+
+No empty dashboard application is maintained before the data contracts are ready.
+
+## Deferred Ideas
+
+- app-specific red-team generation from proven authority paths
+- secure RAG and memory persistence experiments
+- ecosystem rule exchange and signed community packs
+- deeper deployed-environment discovery
+
+These are discovery tracks, not commitments for the current release.

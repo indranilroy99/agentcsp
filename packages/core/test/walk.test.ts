@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { walkProjectWithCoverage } from "../src/scanner/walk.js";
+import { tempPath } from "./temp-path.js";
 
 describe("walkProjectWithCoverage", () => {
   it("reports ignored, hidden, log, and oversized scan coverage", async () => {
@@ -62,8 +63,73 @@ describe("walkProjectWithCoverage", () => {
     expect(result.coverage.files_indexed).toBe(1);
   });
 
+  it("bounds traversal by the total directory limit", async () => {
+    const root = tempPath("agentcsp-max-directories-fixture");
+    await fs.rm(root, { recursive: true, force: true });
+    await fs.mkdir(path.join(root, "a"), { recursive: true });
+    await fs.mkdir(path.join(root, "b"), { recursive: true });
+    await fs.writeFile(path.join(root, "a", "one.md"), "one\n", "utf8");
+    await fs.writeFile(path.join(root, "b", "two.md"), "two\n", "utf8");
+    await fs.writeFile(path.join(root, "root.md"), "root\n", "utf8");
+
+    const result = await walkProjectWithCoverage({
+      root_path: root,
+      output_path: ".agentcsp",
+      formats: ["json"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024,
+      max_files: 100,
+      max_directories: 2,
+      max_entries_per_directory: 100,
+      quiet: true
+    });
+
+    expect(result.files.map((file) => file.relativePath)).toEqual(["a/one.md", "root.md"]);
+    expect(result.coverage).toMatchObject({
+      scan_health: "incomplete",
+      scan_health_reasons: ["max_directories_reached"],
+      directories_visited: 2,
+      max_directories_reached: true,
+      max_directories: 2
+    });
+  });
+
+  it("omits an overpopulated directory as a deterministic bounded unit", async () => {
+    const root = tempPath("agentcsp-directory-entry-limit-fixture");
+    await fs.rm(root, { recursive: true, force: true });
+    await fs.mkdir(path.join(root, "dense"), { recursive: true });
+    await Promise.all(
+      ["a.md", "b.md", "c.md"].map((name) => fs.writeFile(path.join(root, "dense", name), `${name}\n`, "utf8"))
+    );
+    await fs.writeFile(path.join(root, "root.md"), "root\n", "utf8");
+
+    const result = await walkProjectWithCoverage({
+      root_path: root,
+      output_path: ".agentcsp",
+      formats: ["json"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024,
+      max_files: 100,
+      max_directories: 100,
+      max_entries_per_directory: 2,
+      quiet: true
+    });
+
+    expect(result.files.map((file) => file.relativePath)).toEqual(["root.md"]);
+    expect(result.coverage).toMatchObject({
+      scan_health: "incomplete",
+      scan_health_reasons: ["directory_entry_limit_reached"],
+      directories_skipped_for_entry_limit: 1,
+      max_entries_per_directory: 2,
+      directory_entry_limit_paths: ["dense"],
+      directory_entry_limit_paths_truncated: false
+    });
+  });
+
   it("bounds oversized file path previews while preserving exact counts", async () => {
-    const root = "/private/tmp/agentcsp-oversized-preview-fixture";
+    const root = tempPath("agentcsp-oversized-preview-fixture");
     await fs.rm(root, { recursive: true, force: true });
     await fs.mkdir(root, { recursive: true });
     await Promise.all(
@@ -116,7 +182,7 @@ describe("walkProjectWithCoverage", () => {
     const root = await createCustomOutputFixture();
     const result = await walkProjectWithCoverage({
       root_path: root,
-      output_path: "/private/tmp/agentcsp-outside-root-output",
+      output_path: tempPath("agentcsp-outside-root-output"),
       formats: ["json", "md"],
       include_hidden: true,
       include_logs: false,
@@ -152,7 +218,7 @@ describe("walkProjectWithCoverage", () => {
 });
 
 async function createCoverageFixture(): Promise<string> {
-  const root = "/private/tmp/agentcsp-walk-coverage-fixture";
+  const root = tempPath("agentcsp-walk-coverage-fixture");
   await fs.rm(root, { recursive: true, force: true });
   await fs.mkdir(path.join(root, ".codex"), { recursive: true });
   await fs.mkdir(path.join(root, ".agentcsp"), { recursive: true });
@@ -178,7 +244,7 @@ async function createCoverageFixture(): Promise<string> {
 }
 
 async function createCustomOutputFixture(): Promise<string> {
-  const root = "/private/tmp/agentcsp-custom-output-fixture";
+  const root = tempPath("agentcsp-custom-output-fixture");
   await fs.rm(root, { recursive: true, force: true });
   await fs.mkdir(path.join(root, "security", "agentcsp-output"), { recursive: true });
   await fs.writeFile(path.join(root, "AGENTS.md"), "review only\n", "utf8");
@@ -188,7 +254,7 @@ async function createCustomOutputFixture(): Promise<string> {
 }
 
 async function createDotPrefixedOutputFixture(): Promise<string> {
-  const root = "/private/tmp/agentcsp-dot-prefixed-output-fixture";
+  const root = tempPath("agentcsp-dot-prefixed-output-fixture");
   await fs.rm(root, { recursive: true, force: true });
   await fs.mkdir(path.join(root, "..agentcsp-output"), { recursive: true });
   await fs.writeFile(path.join(root, "AGENTS.md"), "review only\n", "utf8");

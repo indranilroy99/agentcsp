@@ -1,6 +1,5 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 import {
   ScanConfigSchema,
@@ -15,7 +14,7 @@ import {
   type SeverityCounts
 } from "../schemas/index.js";
 import { buildManifest } from "../manifest/build.js";
-import { buildStaticGraph } from "../graph/build-graph.js";
+import { buildStaticAttackPaths, buildStaticRelationships } from "../graph/build-graph.js";
 import {
   applyFindingSuppressions,
   applyRecommendedControls,
@@ -24,7 +23,7 @@ import {
 } from "../policy/load-policy.js";
 import { detectSurfaces, type DetectedSurfaces } from "./detect.js";
 import { walkProjectWithCoverage } from "./walk.js";
-import { loadRules, loadRulesWithDiagnostics, ruleDiagnostic, runRules } from "../rules/engine.js";
+import { loadRulesWithDiagnostics, ruleDiagnostic, runRules } from "../rules/engine.js";
 import { buildStaticBlastRadiusSummary } from "../reports/blast-radius.js";
 import { renderMarkdownReport } from "../reports/markdown.js";
 import { renderSarifReport } from "../reports/sarif.js";
@@ -34,11 +33,13 @@ import { buildCiGateSummary } from "../reports/gates.js";
 import { applyBaselineComparison } from "../reports/baseline.js";
 import { buildInventorySummary } from "../reports/inventory.js";
 import { stableId } from "../utils/ids.js";
-import { resolvePathFromRoot } from "../utils/paths.js";
+import { isPathInsideRoot, resolvePathFromRoot } from "../utils/paths.js";
 import { sortObjects } from "../utils/sort.js";
 import { canonicalJson } from "../utils/canonical-json.js";
-
-const moduleDirectory = path.dirname(fileURLToPath(import.meta.url));
+import { verifyTrustedInput } from "../security/trusted-input.js";
+import { publishArtifactSet, type ArtifactPayload } from "../reports/artifact-transaction.js";
+import { toAgentManifestArtifact, toFindingArtifacts } from "../manifest/artifact.js";
+import { builtInRulesDirectoryPath, loadBuiltInRuleset } from "../rules/catalog.js";
 
 export interface ScanResult {
   manifest: AgentManifest;
@@ -49,41 +50,109 @@ export interface ScanResult {
     findings?: string;
     report?: string;
     sarif?: string;
+    receipt?: string;
   };
   shouldFail: boolean;
 }
 
 export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: string }): Promise<ScanResult> {
-  const config = ScanConfigSchema.parse(rawConfig);
+  const parsedConfig = ScanConfigSchema.parse(rawConfig);
+  const config: ScanConfig =
+    parsedConfig.profile === "ci_strict"
+      ? {
+          ...parsedConfig,
+          fail_on_diagnostics: true,
+          fail_on_expired_suppressions: true,
+          fail_on_scan_health: "degraded"
+        }
+      : parsedConfig;
   const rootPath = path.resolve(config.root_path);
   const outputPath = resolvePathFromRoot(rootPath, config.output_path);
   if (path.resolve(outputPath) === rootPath) {
     throw new Error("AgentCSP output_path must be a directory outside or below the scan root, not the scan root itself.");
   }
-  const baselinePath = config.baseline_path ? resolvePathFromRoot(rootPath, config.baseline_path) : undefined;
-  const resolvedConfig: ScanConfig = { ...config, output_path: outputPath, baseline_path: baselinePath };
+  let policyPath = config.config_path ? resolvePathFromRoot(rootPath, config.config_path) : undefined;
+  let baselinePath = config.baseline_path ? resolvePathFromRoot(rootPath, config.baseline_path) : undefined;
+  let verifiedPolicyContent: Uint8Array | undefined;
+  let verifiedBaselineContent: Uint8Array | undefined;
+  if (policyPath && config.config_sha256) {
+    const verified = await verifyTrustedInput({
+      rootPath,
+      inputPath: policyPath,
+      expectedSha256: config.config_sha256,
+      label: "policy",
+      maxBytes: 1024 * 1024
+    });
+    policyPath = verified.real_path;
+    verifiedPolicyContent = verified.content;
+  }
+  if (baselinePath && config.baseline_sha256) {
+    const verified = await verifyTrustedInput({
+      rootPath,
+      inputPath: baselinePath,
+      expectedSha256: config.baseline_sha256,
+      label: "baseline",
+      maxBytes: 10 * 1024 * 1024
+    });
+    baselinePath = verified.real_path;
+    verifiedBaselineContent = verified.content;
+  }
+  const resolvedConfig: ScanConfig = {
+    ...config,
+    output_path: outputPath,
+    config_path: policyPath,
+    baseline_path: baselinePath
+  };
 
   const walkResult = await walkProjectWithCoverage(resolvedConfig);
   const files = walkResult.files;
-  const policyResult = await loadPolicyWithDiagnostics(rootPath, config.config_path);
+  const policyResult = await loadPolicyWithDiagnostics(rootPath, policyPath, {
+    loadProjectDefault: config.profile !== "ci_strict",
+    maxBytes: 1024 * 1024,
+    verifiedContent: verifiedPolicyContent
+  });
   const policy = policyResult.policy;
   const detected = await detectSurfaces(files);
-  const ruleLoad = await loadScanRules(rootPath);
+  const ruleLoad = await loadScanRules(rootPath, config.profile, config.ruleset);
   detected.diagnostics.push(...walkResult.diagnostics, ...policyResult.diagnostics, ...ruleLoad.diagnostics);
   if (walkResult.coverage.max_files_reached) {
     detected.diagnostics.push(maxFilesReachedDiagnostic(walkResult.coverage.max_files));
   }
-  const surfaces = applyPolicyToSurfaces(detected, policy);
+  if (walkResult.coverage.max_directories_reached) {
+    detected.diagnostics.push(maxDirectoriesReachedDiagnostic(walkResult.coverage.max_directories));
+  }
+  if (walkResult.coverage.directories_skipped_for_entry_limit > 0) {
+    detected.diagnostics.push(
+      directoryEntryLimitDiagnostic(
+        walkResult.coverage.max_entries_per_directory,
+        walkResult.coverage.directories_skipped_for_entry_limit,
+        walkResult.coverage.directory_entry_limit_paths[0] ?? "."
+      )
+    );
+  }
+  const policyAuthority = policyPath && !isPathInsideRoot(rootPath, policyPath) ? "operator" : "project";
+  const surfaces = applyPolicyToSurfaces(detected, policy, policyAuthority);
   const scanCoverage = withDiagnosticCoverage(walkResult.coverage, surfaces.diagnostics);
+  const relationshipGraph = buildStaticRelationships(surfaces);
 
   const policyControlledFindings = applyRecommendedControls(runRules(surfaces, ruleLoad.rules), policy);
-  const suppressedFindings = applyFindingSuppressions(policyControlledFindings, policy);
+  const suppressedFindings = applyFindingSuppressions(
+    policyControlledFindings,
+    policy,
+    new Date(),
+    policyAuthority
+  );
   const baselineResult = resolvedConfig.baseline_path
-    ? await applyBaselineComparison(suppressedFindings, resolvedConfig.baseline_path, rootPath)
+    ? await applyBaselineComparison(
+        suppressedFindings,
+        resolvedConfig.baseline_path,
+        rootPath,
+        verifiedBaselineContent
+      )
     : undefined;
   const findings = baselineResult?.findings ?? suppressedFindings;
   const activeFindings = findings.filter((finding) => finding.suppression?.status !== "active");
-  const graph = buildStaticGraph(surfaces, activeFindings);
+  const graph = buildStaticAttackPaths(surfaces, relationshipGraph.relationships, activeFindings);
   const staticBlastRadius = buildStaticBlastRadiusSummary(surfaces, findings, graph.relationships, graph.attackPaths, {
     limit: graph.attackPathLimit,
     total: graph.attackPathsTotal,
@@ -115,23 +184,33 @@ export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: 
     staticBlastRadius
   });
   const reportMarkdown = renderMarkdownReport(manifest);
+  const artifactManifest =
+    config.artifact_profile === "internal" ? manifest : toAgentManifestArtifact(manifest);
+  const artifactFindings =
+    config.artifact_profile === "internal" ? manifest.findings : toFindingArtifacts(manifest.findings);
 
-  await fs.mkdir(outputPath, { recursive: true });
+  const artifacts: ArtifactPayload[] = [];
   const outputFiles: ScanResult["outputFiles"] = {};
   if (config.formats.includes("json")) {
-    outputFiles.manifest = path.join(outputPath, "agent-manifest.json");
-    outputFiles.findings = path.join(outputPath, "findings.json");
-    await fs.writeFile(outputFiles.manifest, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
-    await fs.writeFile(outputFiles.findings, `${JSON.stringify(findings, null, 2)}\n`, "utf8");
+    artifacts.push({ name: "agent-manifest.json", content: JSON.stringify(artifactManifest, null, 2) });
+    artifacts.push({ name: "findings.json", content: JSON.stringify(artifactFindings, null, 2) });
   }
   if (config.formats.includes("md")) {
-    outputFiles.report = path.join(outputPath, "report.md");
-    await fs.writeFile(outputFiles.report, `${reportMarkdown}\n`, "utf8");
+    artifacts.push({ name: "report.md", content: reportMarkdown });
   }
   if (config.formats.includes("sarif")) {
-    outputFiles.sarif = path.join(outputPath, "agentcsp.sarif");
-    await fs.writeFile(outputFiles.sarif, `${JSON.stringify(renderSarifReport(manifest), null, 2)}\n`, "utf8");
+    artifacts.push({ name: "agentcsp.sarif", content: JSON.stringify(renderSarifReport(manifest), null, 2) });
   }
+  const published = await publishArtifactSet({
+    outputPath,
+    artifactProfile: config.artifact_profile,
+    artifacts
+  });
+  outputFiles.manifest = published.files["agent-manifest.json"];
+  outputFiles.findings = published.files["findings.json"];
+  outputFiles.report = published.files["report.md"];
+  outputFiles.sarif = published.files["agentcsp.sarif"];
+  outputFiles.receipt = published.receiptPath;
 
   return {
     manifest,
@@ -154,20 +233,62 @@ function maxFilesReachedDiagnostic(maxFiles: number): ScanDiagnostic {
   };
 }
 
-async function loadScanRules(rootPath: string): Promise<{
+function maxDirectoriesReachedDiagnostic(maxDirectories: number): ScanDiagnostic {
+  return {
+    id: stableId("diagnostic", ["SCAN_MAX_DIRECTORIES_REACHED", String(maxDirectories)]),
+    severity: "warning",
+    code: "SCAN_MAX_DIRECTORIES_REACHED",
+    file_path: ".",
+    parser: "scanner",
+    reason: `Scan reached the configured max_directories limit (${maxDirectories}). Some subtrees were omitted; increase --max-directories or narrow the scan scope before relying on a quiet report.`,
+    content_redacted: true
+  };
+}
+
+function directoryEntryLimitDiagnostic(maxEntries: number, skippedDirectories: number, firstPath: string): ScanDiagnostic {
+  return {
+    id: stableId("diagnostic", ["SCAN_DIRECTORY_ENTRY_LIMIT_REACHED", String(maxEntries), String(skippedDirectories)]),
+    severity: "warning",
+    code: "SCAN_DIRECTORY_ENTRY_LIMIT_REACHED",
+    file_path: firstPath,
+    parser: "scanner",
+    reason: `${skippedDirectories} directory or directories exceeded the configured max_entries_per_directory limit (${maxEntries}) and were omitted as complete units to preserve deterministic bounded traversal.`,
+    content_redacted: true
+  };
+}
+
+async function loadScanRules(
+  rootPath: string,
+  profile: ScanConfig["profile"],
+  ruleset: ScanConfig["ruleset"]
+): Promise<{
   rules: Rule[];
   diagnostics: ScanDiagnostic[];
   summary: RulePackSummary;
 }> {
   const builtInRulesDirectory = await builtInRulesDirectoryPath();
-  const builtInRules = await loadRules(builtInRulesDirectory);
+  const builtInRules = (await loadBuiltInRuleset(ruleset)).rules;
   const rules = [...builtInRules];
   const diagnostics: ScanDiagnostic[] = [];
   const seenRuleIds = new Set(builtInRules.map((rule) => rule.id));
   const projectRulesDirectory = path.resolve(rootPath, "rules");
   let projectRuleCount = 0;
 
-  if ((await directoryExists(projectRulesDirectory)) && !sameDirectory(projectRulesDirectory, builtInRulesDirectory)) {
+  if (
+    profile === "ci_strict" &&
+    (await directoryExists(projectRulesDirectory)) &&
+    !sameDirectory(projectRulesDirectory, builtInRulesDirectory)
+  ) {
+    diagnostics.push({
+      id: stableId("diagnostic", ["PROJECT_RULES_IGNORED", "rules"]),
+      severity: "info",
+      code: "PROJECT_RULES_IGNORED",
+      file_path: "rules",
+      parser: "rule",
+      reason: "Repository rules were discovered but not applied by the ci_strict profile.",
+      content_redacted: true
+    });
+  } else if ((await directoryExists(projectRulesDirectory)) && !sameDirectory(projectRulesDirectory, builtInRulesDirectory)) {
     const projectRuleLoad = await loadRulesWithDiagnostics(projectRulesDirectory, rootPath);
     diagnostics.push(...projectRuleLoad.diagnostics);
     for (const rule of projectRuleLoad.rules) {
@@ -269,6 +390,8 @@ function summarizeScanHealth(
 ): Pick<ScanCoverageSummary, "scan_health" | "scan_health_reasons"> {
   const reasons = new Set<string>();
   if (coverage.max_files_reached) reasons.add("max_files_reached");
+  if (coverage.max_directories_reached) reasons.add("max_directories_reached");
+  if (coverage.directories_skipped_for_entry_limit > 0) reasons.add("directory_entry_limit_reached");
   if (diagnostics.some((diagnostic) => diagnostic.code === "SCAN_DIRECTORY_READ_FAILED")) {
     reasons.add("directory_read_failed");
   }
@@ -281,6 +404,8 @@ function summarizeScanHealth(
 
   const scan_health =
     coverage.max_files_reached ||
+    coverage.max_directories_reached ||
+    coverage.directories_skipped_for_entry_limit > 0 ||
     diagnostics.some((diagnostic) => diagnostic.code === "SCAN_DIRECTORY_READ_FAILED" || diagnostic.code === "SCAN_FILE_STAT_FAILED")
       ? "incomplete"
       : reasons.size > 0
@@ -293,55 +418,27 @@ function summarizeScanHealth(
   };
 }
 
-function applyPolicyToSurfaces(surfaces: DetectedSurfaces, policy: Policy): DetectedSurfaces {
+function applyPolicyToSurfaces(
+  surfaces: DetectedSurfaces,
+  policy: Policy,
+  authority: "project" | "operator"
+): DetectedSurfaces {
   return {
-    agents: sortObjects(applyTrustOverrides(surfaces.agents, policy)),
-    instructions: sortObjects(applyTrustOverrides(surfaces.instructions, policy)),
-    skills: sortObjects(applyTrustOverrides(surfaces.skills, policy)),
-    plugins: sortObjects(applyTrustOverrides(surfaces.plugins, policy)),
-    mcp_servers: sortObjects(applyTrustOverrides(surfaces.mcp_servers, policy)),
-    tools: sortObjects(applyTrustOverrides(surfaces.tools, policy)),
-    prompts: sortObjects(applyTrustOverrides(surfaces.prompts, policy)),
-    rag_sources: sortObjects(applyTrustOverrides(surfaces.rag_sources, policy)),
-    memory: sortObjects(applyTrustOverrides(surfaces.memory, policy)),
-    secrets: sortObjects(applyTrustOverrides(surfaces.secrets, policy)),
-    runtime_config: sortObjects(applyTrustOverrides(surfaces.runtime_config, policy)),
-    ci_cd: sortObjects(applyTrustOverrides(surfaces.ci_cd, policy)),
-    automations: sortObjects(applyTrustOverrides(surfaces.automations, policy)),
+    agents: sortObjects(applyTrustOverrides(surfaces.agents, policy, authority)),
+    instructions: sortObjects(applyTrustOverrides(surfaces.instructions, policy, authority)),
+    skills: sortObjects(applyTrustOverrides(surfaces.skills, policy, authority)),
+    plugins: sortObjects(applyTrustOverrides(surfaces.plugins, policy, authority)),
+    mcp_servers: sortObjects(applyTrustOverrides(surfaces.mcp_servers, policy, authority)),
+    tools: sortObjects(applyTrustOverrides(surfaces.tools, policy, authority)),
+    prompts: sortObjects(applyTrustOverrides(surfaces.prompts, policy, authority)),
+    rag_sources: sortObjects(applyTrustOverrides(surfaces.rag_sources, policy, authority)),
+    memory: sortObjects(applyTrustOverrides(surfaces.memory, policy, authority)),
+    secrets: sortObjects(applyTrustOverrides(surfaces.secrets, policy, authority)),
+    runtime_config: sortObjects(applyTrustOverrides(surfaces.runtime_config, policy, authority)),
+    ci_cd: sortObjects(applyTrustOverrides(surfaces.ci_cd, policy, authority)),
+    automations: sortObjects(applyTrustOverrides(surfaces.automations, policy, authority)),
     diagnostics: [...surfaces.diagnostics].sort((a, b) => a.id.localeCompare(b.id))
   };
-}
-
-async function firstExistingDirectory(candidates: string[]): Promise<string> {
-  for (const candidate of candidates) {
-    try {
-      const stats = await fs.stat(candidate);
-      if (stats.isDirectory() && (await hasRuleFiles(candidate))) return candidate;
-    } catch {
-      continue;
-    }
-  }
-  throw new Error(
-    `No built-in rules directory with YAML rules found in ${candidates.length} packaged AgentCSP rule locations. Reinstall AgentCSP or verify the package includes the built-in rules.`
-  );
-}
-
-async function builtInRulesDirectoryPath(): Promise<string> {
-  return firstExistingDirectory([
-    path.resolve(moduleDirectory, "../builtin-rules"),
-    path.resolve(moduleDirectory, "../../rules"),
-    path.resolve(moduleDirectory, "../../../../rules")
-  ]);
-}
-
-async function hasRuleFiles(directory: string): Promise<boolean> {
-  const entries = await fs.readdir(directory, { withFileTypes: true });
-  for (const entry of entries) {
-    const absolutePath = path.join(directory, entry.name);
-    if (entry.isDirectory() && (await hasRuleFiles(absolutePath))) return true;
-    if (entry.isFile() && (entry.name.endsWith(".yaml") || entry.name.endsWith(".yml"))) return true;
-  }
-  return false;
 }
 
 async function directoryExists(candidate: string): Promise<boolean> {

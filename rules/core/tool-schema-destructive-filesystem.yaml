@@ -1,4 +1,8 @@
 id: AGENTCSP-TOOL-004
+maturity: stable
+disposition: advisory
+suppressibility: policy
+support_tier: structured
 name: Tool schema exposes destructive filesystem authority
 description: A tool schema accepts path-like input and performs destructive action, creating a high-impact path if untrusted context controls tool arguments.
 category: tool_schema_authority

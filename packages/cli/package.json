@@ -1,7 +1,7 @@
 {
   "name": "agentcsp",
-  "version": "0.1.0",
-  "description": "AgentCSP command-line interface.",
+  "version": "0.2.0",
+  "description": "Local-first AI agent security scanner and evidence CLI.",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
@@ -32,6 +32,10 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "clean": "rimraf dist"

@@ -1,4 +1,21 @@
-# AgentCSP
+<p align="center">
+  <img src="docs/assets/agentcsp-mark.svg" width="112" alt="AgentCSP security mark">
+</p>
+
+<h1 align="center">AgentCSP</h1>
+
+<p align="center"><strong>Static security analysis for AI agent repositories.</strong></p>
+
+<p align="center">
+  <a href="https://github.com/indranilroy99/agentcsp/actions/workflows/ci.yml"><img src="https://github.com/indranilroy99/agentcsp/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-2f6feb" alt="Apache 2.0 license"></a>
+  <img src="https://img.shields.io/badge/node-%3E%3D20-339933" alt="Node.js 20 or newer">
+  <img src="https://img.shields.io/badge/rules-advisory-6b7280" alt="Advisory rules">
+</p>
+
+AgentCSP inventories what an AI agent can see, load, call, remember, and execute. It turns repository configuration into a versioned agent manifest, evaluates open security rules, and produces evidence that security teams can review or route into CI.
+
+It is local-first, vendor-neutral, and does not require a model, hosted service, or paid API.
 
 ```text
     ___                    __  __________
@@ -12,285 +29,230 @@
        trust        data class        authority       evidence
 ```
 
-**Context Security Policy for AI Agents.**
+## What It Finds
 
-AgentCSP is an open-source control plane for discovering, testing, and enforcing security policy across AI agents, tools, skills, MCP servers, RAG, memory, CI/CD, and runtime actions.
+AgentCSP correlates agent context with authority. The default ruleset focuses on conditions that are useful to investigate, including:
 
-It is not a prompt filter. AgentCSP models the agent environment as a security surface: what the agent can see, what it can trust, what it can call, what it can remember, and what authority it can exercise.
+- unsandboxed or approval-bypassed agent runtimes
+- credential-backed and remote MCP authority
+- plaintext MCP credential transport and broad environment passthrough
+- destructive or misleading tool schemas
+- untrusted GitHub events reaching agent workflows with write authority
+- secret-bearing, external, memory, RAG, and privileged-tool boundaries
+- disabled agent safety controls around sensitive capabilities
 
-```text
-untrusted_context -> agent_surface -> capability -> data_class -> side_effect -> recommended_control
-```
+The scanner also inventories instructions, skills, plugins, prompts, MCP servers, source-defined tools, package scripts, workflows, env key references, RAG sources, memory, runtime configuration, and automations.
 
-## Why AgentCSP
-
-Modern agent systems are assembled from prompts, repo instructions, MCP servers, browser tools, shell commands, package scripts, retrieval stores, memory, logs, credentials, CI workflows, and generated state. Security teams need one view of that AI authority before they can reason about policy, blast radius, or evidence.
-
-AgentCSP answers practical questions:
-
-- What agent-facing context exists in this project?
-- Which tools, scripts, MCP servers, and workflows expand the agent's authority?
-- Where can untrusted or unknown context influence privileged action?
-- Which secret references, data classes, and external systems are in scope?
-- What is the static blast radius if an instruction-boundary failure succeeds?
-- Which controls should be recommended before runtime enforcement exists?
-
-## Current Status
-
-AgentCSP is in early MVP development. The first release is a local-first CLI that scans a repository, builds a versioned agent manifest, runs an open rule pack, and produces JSON, Markdown, and SARIF evidence.
-
-Runtime enforcement adapters, deeper graph traversal, and the dashboard are planned after the CLI data model is stable.
-
-## Core Capabilities
-
-- **Agent Surface Inventory**: discovers instructions, prompt templates, skills, plugins, MCP configs, source-defined MCP and agent-framework tool registrations, package scripts, workflows, env references, RAG sources, memory surfaces, logs, tool definitions, OpenAPI or Swagger tool imports, hosted assistant definitions, realtime or voice agent sessions, and live session-sharing configs.
-- **Agent Manifest**: emits `agent-manifest.json`, an SBOM-style record for AI agent deployments.
-- **Authority Signals**: classifies actions such as read, write, execute, publish, send, delete, remember, and call.
-- **Instruction and Cursor Rule Signals**: records redacted instruction-file signals when repo, workspace, custom, or always-applied Cursor project rules bridge untrusted context into tools, memory, or external actions.
-- **Skill Data-Flow Signals**: records redacted skill inputs and outputs when skills bridge retrieved context, tool output, memory, or prompts to external publication.
-- **MCP and Tool Schema Authority**: extracts individual tool schemas, normalizes common TypeScript/JavaScript MCP SDK registrations, Python/FastMCP tool decorators, Python LangChain/LangGraph/OpenAI Agents/CrewAI-style source tools, and JavaScript/TypeScript LangChain or AI SDK-style source tools, expands local Pydantic request-model fields without emitting model bodies, and classifies package-runner MCP launchers, missing local MCP implementations, model-visible MCP prompt/resource context, MCP client roots, sampling, and elicitation authority, OpenAPI or Swagger API tool imports, authenticated external API writes, model-visible tool-description injection, tool name collisions, external writes, prompt-like content inputs, PII/customer-data inputs, local-path-to-external data flow, destructive actions, credential-like inputs, open-world arguments, read-only hint conflicts, filesystem paths, URL inputs, browser control, memory access, and shell authority.
-- **Remote MCP Trust Signals**: detects remote MCP servers, redacts URLs and header values, records host/header/key metadata, classifies plaintext remote transport, ambient environment passthrough, dynamic tool-catalog trust, live resource-subscription context bridges, and credential-backed third-party MCP access.
-- **Runtime Posture Inventory**: parses agent runtime configs for sandbox mode, approval policy, network access, Claude-style permission allowlists, privileged tool allowlists, MCP references, auto-approved MCP tools, MCP OAuth authorization, device-flow, and callback-capture posture, hosted assistant definitions and parallel tool fanout, realtime and voice session authority, public chat/widget ingress, public debug/playground console exposure, public response-stream disclosure, model-output action-router auto-execution, live session-sharing and collaboration authority, computer-use and desktop automation authority, broad web scopes, private-network and metadata-service web egress, auto-approved package scripts, AgentCSP advisory-policy integrity, public A2A/agent-card exposure, outbound remote-agent federation, remote prompt-registry supply posture, remote instruction-loader authority, agent package-manifest supply-chain posture, agent deployment image provenance, AI model endpoint egress, public or anonymous model-gateway exposure, AI model router and fallback boundaries, AI embedding and indexing boundaries, authenticated browser-session authority, browser remote-debugging exposure, browser extension/profile exposure, browser file-transfer authority, inbound message trigger authority, background agent task-queue authority, multi-agent orchestration authority, autonomous agent loop and planner-executor authority, live eval/red-team harness authority, AI feedback/RLHF capture boundaries, AI training and fine-tuning dataset boundaries, LLM prompt/response cache replay and semantic-cache tenant boundaries, disabled, fail-open, and model-only agent-safety controls around privileged tools, agent identity delegation, cloud control-plane authority, dynamic agent extension loading, self-modifying control-plane writes, model-mediated and channel-mediated approval gates, agent authorization-broker dynamic grant posture, context-composer role boundaries and env-secret materialization, context-window truncation and compaction integrity, agent reasoning/scratchpad state exposure, agent tool retry/replay and idempotency posture, workspace context/file-sync exposure, tool-output injection boundaries, visual and OCR context boundaries, artifact/output export boundaries, generic webhook/callback egress, container isolation boundaries, code interpreter and notebook runtime authority, SaaS/API connector authority including recipient-boundary exposure, secret-manager authority including prompt/context materialization, database connector authority, AI telemetry export and public/shared trace access, and env key exposure.
-- **Prompt Template Signals**: records redacted template variables, privileged system/developer role-boundary injection, exact references to discovered tools, and flags untrusted user/customer/context variables joined with tool, memory, external, or secret-sensitive directives.
-- **RAG, Vector Store, Memory, and Generated-State Signals**: records redacted instruction-like, data-egress, explicit privileged-tool, remote vector-store connector, ingestion poisoning posture, remote URL-fetch posture, retrieval authorization posture, remote/shared memory-store connector, public or cross-tenant memory exposure, access-control, tenant-isolation, retention, redaction, external-send, persistence, transcript, cached-output, and tool-output replay signals from retrieval, memory, and included log files.
-- **Automation Authority**: models scheduled, manual, issue/comment-triggered, and externally dispatched workflows, including redacted event-payload-to-agent inputs and agent package-script execution, as agent-relevant automation surfaces.
-- **Trust Boundary Analysis**: tracks trusted, project, workspace, third-party, untrusted, and unknown provenance.
-- **Explainable Risk Scoring**: severity includes contributing factors such as trust level, data class, reversibility, external reach, and secret exposure.
-- **Finding Confidence**: each finding includes confidence and rationale so teams can separate correlated evidence from weaker static signals.
-- **Triage and Action Plan**: summarizes active findings by severity, confidence, surface type, category, recommended control, top rules, top risk objects, and deterministic owner routing hints for remediation.
-- **Baseline Comparison**: compares current findings to previous scan output so teams can separate new risk from existing debt.
-- **Scan Coverage Summary**: reports indexed files, oversized files, ignored paths, skipped hidden/log directories, max-file limits, and diagnostic counts.
-- **Scan Diagnostics**: emits redacted parser diagnostics when security-relevant configs cannot be parsed.
-- **Evidence-Led Static Attack Paths**: connects specific context-risk signals to privileged capabilities, highlights customer-data routes into PII-capable external tools, prefers exact callable references when context names a discovered tool or MCP server, and avoids expanding those cases into broad speculative blast-radius entries.
-- **Auditable Suppressions**: supports owned, reasoned, expiring accepted-risk records without deleting evidence.
-- **Open Rule Packs**: constrained YAML rules operate over normalized manifest objects. Built-in rules always run; project-local rules are additive and never execute custom JavaScript.
-- **Static Blast-Radius Summary**: reports reachable authority from static project metadata without claiming runtime graph traversal.
-- **Evidence Reports**: outputs JSON and Markdown with redacted evidence snippets and recommended controls.
-
-## Scanner Safety
-
-AgentCSP is conservative by default:
-
-- Secret values are not read or emitted.
-- `.env*` files are reduced to file presence and key names only.
-- Evidence snippets are redacted by default.
-- Markdown reports use `<scan-root>` instead of printing the absolute local scan path.
-- Raw file contents are not dumped into the manifest.
-- RAG and memory content signals are emitted as booleans and counts, not raw text.
-- Large/generated folders, the configured inside-root output directory, and prior AgentCSP output directories such as `.agentcsp`, `.agentcsp-*`, and `.agentcsp_*` are ignored by default.
-- `.agentcspignore` is supported in the MVP.
-- File traversal and object IDs are deterministic.
-
-Default included hidden paths:
-
-- `.codex`
-- `.agents`
-- `.claude`
-- `.cursor`
-- `.github`
-- `.well-known`
-- common MCP config paths
-
-Default excluded paths:
-
-- `.git`
-- `node_modules`
-- `dist`
-- `build`
-- `coverage`
-- cache folders
-- log folders unless `--include-logs` is set
+AgentCSP reports a **Static Blast-Radius Summary**. It does not claim runtime reachability or exploitability.
 
 ## Quick Start
 
+The current release candidate is built from source. npm publication is a separate release step.
+
 ```bash
-pnpm install
+git clone https://github.com/indranilroy99/agentcsp.git
+cd agentcsp
+corepack enable
+pnpm install --frozen-lockfile
 pnpm build
-pnpm agentcsp scan examples/vulnerable-agent --out .agentcsp
+pnpm agentcsp scan . --out .agentcsp
 ```
 
-Before pushing release or rule-pack changes, run the same verification gate used by CI:
+Scan the included vulnerable fixture:
 
 ```bash
-pnpm verify
+pnpm agentcsp scan examples/vulnerable-agent \
+  --out .agentcsp \
+  --format json,md,sarif
 ```
 
-The scan writes:
+Artifacts are written transactionally:
 
 ```text
-examples/vulnerable-agent/.agentcsp/agent-manifest.json
-examples/vulnerable-agent/.agentcsp/findings.json
-examples/vulnerable-agent/.agentcsp/report.md
+.agentcsp/
+  agent-manifest.json   portable AI agent inventory
+  findings.json         compact machine-readable findings
+  report.md             analyst-readable report
+  agentcsp.sarif        optional code-scanning output
+  receipt.json          artifact digests and completion record
 ```
 
-CLI shape:
+An existing output path is replaced only when it is empty or contains an intact AgentCSP-owned generation. Unknown files, symlinks, receipt drift, or digest mismatches stop publication without deleting the existing directory.
 
-```bash
-agentcsp scan [path] --out .agentcsp
-```
+## Why Security Teams Use It
 
-Relative `--out`, `--baseline`, and `--config` paths are resolved from the scanned project root. Absolute paths are honored for reading and writing. Emitted baseline comparisons use root-relative paths for in-project baselines and `<external-baseline>` for baselines outside the scanned root. Diagnostics for policy configs outside the scanned root redact the local path.
+**One agent authority inventory.** AgentCSP normalizes fragmented instructions, tools, MCP configuration, workflows, memory, retrieval, and runtime posture into stable objects.
 
-The output path must be a dedicated directory outside or below the scan root, not the scan root itself. This prevents repeated scans from ingesting stale AgentCSP manifests, findings, reports, or SARIF files as project input.
+**Evidence instead of raw content.** Findings reference deterministic object and evidence IDs. Values and evidence snippets remain redacted by default.
 
-Interactive scans print a bounded scan receipt with finding counts, active triage, action-plan status, scan health, diagnostics, coverage, CI gate status, and truncation flags for top risks and static blast-radius previews. Use `--quiet` in CI when output files and exit codes should be the only automation interface.
+**Explainable risk.** Every finding carries trust, data class, action, side effect, reversibility, external reach, secret exposure, and untrusted-to-privileged factors.
 
-Useful flags:
+**CI without surprise failures.** Advisory scans exit `0` after a successful scan. Teams opt into severity gates; scanner integrity and coverage failures use distinct exit codes.
+
+**Open detection content.** Rules are constrained YAML over normalized objects. They cannot execute custom JavaScript.
+
+## Scan Profiles
+
+| Profile | Intended use | Repository-controlled inputs | Default finding behavior |
+| --- | --- | --- | --- |
+| `advisory` | Local discovery and rollout | Project policy, rules, and `.agentcspignore` may be used | Findings do not fail the command unless `--fail-on` is set |
+| `ci-strict` | Protected CI automation | Project policy, project rules, and project ignore files are ignored | Coverage and diagnostic integrity gates are enabled; finding gates remain operator-selected |
+
+Use external, digest-pinned policy in strict CI:
 
 ```bash
 agentcsp scan . \
-  --config agentcsp.yaml \
-  --format json,md,sarif \
-  --fail-on critical \
+  --profile ci-strict \
+  --config /opt/security/agentcsp.yaml \
+  --config-sha256 "$AGENTCSP_POLICY_SHA256" \
+  --ruleset recommended \
+  --fail-on high \
   --fail-on-confidence high \
-  --baseline .agentcsp/previous-findings.json \
-  --fail-on-new \
-  --fail-on-scan-health degraded \
-  --no-hidden \
-  --include-logs \
-  --max-file-size 1048576 \
-  --max-files 5000 \
+  --format json,md,sarif \
   --quiet
 ```
 
-AgentCSP exits with code `0` by default when a scan completes, even if findings exist. CI failure is opt-in through `--fail-on critical`, `--fail-on high`, `--fail-on medium`, `--fail-on low`, `--fail-on-diagnostics`, `--fail-on-expired-suppressions`, or `--fail-on-scan-health degraded|incomplete`. When a gate is enabled, `ci_gate_summary` records the failed gate names plus bounded blocker IDs for severity-gated findings, expired suppressions, and diagnostics. It also records suppression scope posture and bounded broad-active-suppression IDs so teams can review accepted-risk records that may hide wide classes of AI security findings.
+`ci-strict` is an input-integrity profile, not a claim that static findings are runtime-proven. See [Detection Quality](docs/detection-quality.md).
 
-Use `--fail-on-confidence high` or `--fail-on-confidence very_high` with `--fail-on` when CI should fail only on findings that meet both impact and confidence thresholds.
+## Rule Packs
 
-Use `--baseline` with a previous `findings.json` or `agent-manifest.json` to distinguish new, existing, and resolved findings. Add `--fail-on-new` when CI should fail only on new findings that meet the configured severity and confidence thresholds.
-
-Use `--fail-on-expired-suppressions` when stale accepted-risk records should fail CI even without a severity threshold. Active suppressions still remain visible in JSON, Markdown, and SARIF, but are excluded from severity gates until they expire.
-
-Use `--fail-on-diagnostics` when malformed security-relevant configs should fail CI even if findings are otherwise below the configured severity gate. Malformed `agentcsp.yaml` files are reported as redacted diagnostics and scans continue with empty advisory policy so JSON, Markdown, and SARIF evidence are still emitted.
-
-Use `--fail-on-scan-health degraded` when CI should fail if the scan is degraded or incomplete, including oversized skipped files. Use `--fail-on-scan-health incomplete` when CI should fail only if traversal missed part of the configured scope.
-
-The terminal banner animates only in interactive terminals. It is suppressed by `--quiet`, disabled in CI and piped output, and can be turned off with `AGENTCSP_NO_ANIMATION=1`.
-
-SARIF output is available for CI and code-scanning integrations:
+| Pack | Size | Purpose | Enforcement status |
+| --- | ---: | --- | --- |
+| `recommended` | 17 rules | Bounded first-run coverage for structured, high-impact agent authority failures | Advisory only |
+| `extended` | 383 rules | Broad research, hunting, fixture, and rule-development coverage | Advisory only |
 
 ```bash
-agentcsp scan . --format json,md,sarif --out .agentcsp
+agentcsp rules list
+agentcsp rules explain AGENTCSP-RUNTIME-001
+agentcsp scan . --ruleset extended
 ```
 
-SARIF includes scan-level triage, action plan, CI gate, coverage, diagnostics, baseline, and static blast-radius properties, plus rule/result precision, rank, tags, and GitHub-compatible `security-severity` metadata.
+Finding confidence is capped by evidence support:
 
-Copy-pasteable GitHub code-scanning workflows are available in `examples/ci/`, with additional rollout guidance in `docs/ci.md`.
+- `typed_path`: concrete typed adapter and authority path; maximum `very_high`
+- `structured`: supported parser and correlated fields; maximum `high`
+- `heuristic`: redacted text or path signal; maximum `medium`
 
-## Repository Layout
+No v0.2 rule is independently calibrated for automatic blocking. The synthetic conformance suite verifies parser and rule behavior but is explicitly ineligible as production precision evidence.
+
+## Scanner Safety
+
+- `.env*` files are parsed byte-by-byte for key names; values are never converted to strings.
+- Evidence snippets are always `[redacted by default]`.
+- Raw file contents are not copied into the manifest.
+- Files and directories have configurable limits.
+- `.git`, dependencies, generated output, caches, and logs are excluded by default.
+- Hidden AI/security paths such as `.codex`, `.agents`, `.claude`, `.cursor`, and `.github` are included by default.
+- `.agentcspignore` is supported in advisory scans.
+- Output is staged, schema-validated, permission-restricted, atomically published, and accompanied by SHA-256 digests.
+- Paths, object IDs, finding IDs, ordering, and fingerprints are deterministic.
+
+## CLI Reference
 
 ```text
-packages/core   scanner, schemas, rules, policy, risk, reporting
+agentcsp scan [path]           scan a repository and write evidence
+agentcsp config validate      validate policy without scanning
+agentcsp rules list           inspect a built-in pack
+agentcsp rules explain <id>   inspect one rule
+agentcsp baseline create      create a versioned findings baseline
+agentcsp baseline diff        compare current findings to a baseline
+agentcsp baseline migrate     migrate a supported baseline
+agentcsp doctor               verify runtime and packaged assets
+agentcsp version --json       print compatibility metadata
+```
+
+Common scan options:
+
+```text
+--out <path>                    output directory (default: .agentcsp)
+--profile advisory|ci-strict    scanner trust profile
+--ruleset recommended|extended  built-in rule pack
+--artifact-profile portable|internal
+--config <path>                 policy file
+--baseline <path>               prior findings or manifest
+--format json,md,sarif          output formats
+--fail-on <severity>            explicit finding gate
+--fail-on-confidence <level>    minimum confidence for the finding gate
+--fail-on-new                   gate only new baseline findings
+--no-hidden                     skip hidden AI/security directories
+--include-logs                  include log directories
+--max-file-size <bytes>         per-file inspection limit
+--max-files <count>             traversal limit
+--max-directories <count>       directory traversal limit
+--max-entries-per-directory <count>
+--quiet                         suppress non-error output
+```
+
+Exit codes are stable:
+
+| Code | Meaning |
+| ---: | --- |
+| `0` | Scan completed and configured gates passed |
+| `1` | An explicitly configured finding gate failed |
+| `2` | Invalid configuration or input |
+| `3` | Scanner integrity, coverage, diagnostic, suppression, or packaged-artifact gate failed |
+| `4` | Unexpected internal failure |
+
+## Manifest Contract
+
+`agent-manifest.json` is an SBOM-style record for AI agent systems. Its v0.2 contract includes:
+
+- versioned scanner, schema, identity, and fingerprint metadata
+- normalized surface objects and trust levels
+- data classes and authority actions
+- static relationships and bounded attack paths
+- compact findings linked by stable object and evidence references
+- scan coverage, diagnostics, triage, action plan, and CI gate summaries
+- portable redaction by default, with an explicit internal artifact profile
+
+Generated JSON Schemas are published from [`schemas/`](schemas). Format details are documented in [Manifest](docs/manifest.md).
+
+## Policy And Baselines
+
+`agentcsp.yaml` supports trust overrides, recommended controls, and owned, reasoned, expiring suppressions. Policy is advisory in v0.2; reports say "recommended control" and never claim an action was blocked or quarantined.
+
+```bash
+agentcsp config validate agentcsp.yaml
+agentcsp baseline create .agentcsp/findings.json --out agentcsp-baseline.json
+agentcsp baseline diff agentcsp-baseline.json .agentcsp/findings.json
+```
+
+See [Policy](docs/policy.md), [Rules](docs/rules.md), and [CI](docs/ci.md).
+
+## Scope And Limitations
+
+AgentCSP analyzes repository state. It cannot prove which configuration is deployed, whether a capability is reachable, or whether a condition is exploitable after environment, command-line, user-global, deployment, or operating-system overrides. Runtime enforcement adapters and the dashboard are deliberately outside the v0.2 scope.
+
+The project is focused on AI agent security. It is not a general dependency or software supply-chain scanner.
+
+## Development
+
+```bash
+pnpm install --frozen-lockfile
+pnpm verify
+```
+
+`pnpm verify` checks schemas, versions, documentation links, the rule catalog, detection conformance, builds, packed tarballs, clean-room installation, CI examples, deterministic CycloneDX SBOM output, types, tests, fixture outputs, redaction invariants, and dependency audit results.
+
+`pnpm verify:release` adds the 5,000-file, 100 MiB release benchmark documented in [Performance Envelope](docs/performance.md).
+
+Repository layout:
+
+```text
+packages/core   scanner, schemas, rules, graph, policy, and reporting
 packages/cli    command-line interface
-rules           built-in open rule packs
-schemas         exported JSON schemas
-examples        vulnerable/demo agent projects
-docs            product, architecture, roadmap, and usage notes
+rules           built-in open rule catalog and pack manifests
+schemas         generated JSON Schemas
+examples        safe and vulnerable agent repositories
+docs            architecture, security model, usage, and operations
 ```
 
-## Manifest
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before proposing scanner or rule changes. Security issues should follow [SECURITY.md](SECURITY.md), not the public issue tracker.
 
-The Agent Manifest is the SBOM equivalent for AI agent deployments. Core sections include:
+## Project Status
 
-- `metadata`
-- `agents`
-- `instructions`
-- `skills`
-- `plugins`
-- `mcp_servers`
-- `tools`
-- `prompts`
-- `rag_sources`
-- `memory`
-- `secrets`
-- `runtime_config`
-- `ci_cd`
-- `automations`
-- `relationships`
-- `attack_paths`
-- `findings`
-- `evidence`
-- `diagnostics`
-- `triage_summary`
-- `action_plan`
-- `baseline_comparison`
-- `scan_coverage`
-- `static_blast_radius`
-
-Findings include severity, confidence, risk factors, redacted evidence, mappings, and recommended controls. The triage summary gives downstream CI and platform consumers stable counts for active risk, suppressions, confidence, surface types, control mix, deterministic risk drivers, top rules, and top active risks with driver, impact, and control-objective context. The action plan adds bounded prioritized remediation items with risk drivers, truncation metadata, baseline status, and owner hints such as `agent-platform`, `identity-and-secrets`, `data-and-knowledge`, `platform-ci`, and `runtime-platform`.
-
-`metadata.config` records the safe scan contract behind the manifest, including requested formats, traversal limits, hidden/log settings, CI gates, and whether policy or baseline inputs were configured, without copying raw local output, policy, or baseline paths.
-
-`metadata.rule_pack` records the built-in and project-local rule counts used for the scan, a SHA-256 fingerprint of the normalized rule set, plus redacted rule diagnostic counts, without exposing local rule paths or rule contents.
-
-## Rules
-
-Rules are open YAML files validated by Zod. MVP rules match normalized manifest objects first; graph-edge rules are planned later.
-
-AgentCSP always runs its built-in rule pack. If the scanned repository contains a project-local `rules/` directory, those rules are loaded additively. Malformed local rules and duplicate rule IDs are reported as redacted diagnostics and skipped so they cannot suppress built-in detections.
-
-The built-in rule pack and generated JSON schemas are packaged with `@agentcsp/core` under the compiled distribution, so installed CLI builds and downstream integrations do not depend on checkout-relative root `rules/` or `schemas/` directories.
-
-```yaml
-id: AGENTCSP-MCP-001
-name: Credential-backed MCP server exposes agent-callable authority
-category: mcp_authority
-severity: medium
-match:
-  object_type: mcp_server
-  where:
-    - field: side_effect
-      op: equals
-      value: true
-    - field: secret_exposure
-      op: equals
-      value: true
-recommendation:
-  control: require_approval
-  text: Review MCP tool schemas, credential scope, network reach, and side effects.
-```
-
-## Policy
-
-`agentcsp.yaml` is advisory in v1. It supports trust overrides, recommended controls, and auditable suppressions. Runtime enforcement is planned for future MCP and agent-framework adapters.
-
-If `agentcsp.yaml` is malformed, fails schema validation, or an explicitly supplied `--config` path is missing, AgentCSP records a redacted scan diagnostic and continues with empty advisory policy. Default missing policy files do not produce diagnostics.
-
-```yaml
-schema_version: "0.1"
-
-trust_overrides:
-  - path: "rag/**"
-    trust_level: "untrusted"
-
-recommended_controls:
-  - id: "deny-unsandboxed-runtime"
-    reason: "Organization policy forbids unsandboxed runtime without approval."
-    control: "deny"
-    match:
-      rule_id: "AGENTCSP-RUNTIME-001"
-      path: ".codex/config.toml"
-```
-
-Reports use "recommended controls" until runtime enforcement exists.
-
-## Roadmap
-
-- CLI scanner and manifest generator
-- Built-in rule pack
-- JSON and Markdown reports
-- SARIF output for CI and GitHub code scanning
-- Graph-based blast-radius analysis
-- Red-team rule exchange
-- Secure RAG and memory lab
-- Local and cloud-hostable platform for manifest registry, policy governance, evidence, and AI agent security operations
-- Runtime enforcement adapters
-- Evidence dashboard
-
-## Open Source Commitment
-
-AgentCSP core is fully open source, self-hostable, local-first, vendor-neutral, and usable without paid APIs. Optional integrations may be added later, but scanning, reporting, rules, and policy evaluation must work locally.
+v0.2.0 is a CLI-first release candidate. The scanner, artifacts, and lifecycle commands are implemented and covered by automated tests. Automatic rule blocking, runtime enforcement, a hosted service, and a dashboard are not part of this release.
 
 ## License
 
-Apache License 2.0.
+Apache License 2.0. See [LICENSE](LICENSE).

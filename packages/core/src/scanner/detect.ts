@@ -10,10 +10,10 @@ import {
   PROMPT_DIR_NAMES,
   RAG_DIR_NAMES
 } from "./defaults.js";
-import type { ActionType, ScanDiagnostic, SurfaceObject } from "../schemas/index.js";
+import type { ActionType, DataClass, ScanDiagnostic, SurfaceObject } from "../schemas/index.js";
 import type { WalkedFile } from "./walk.js";
 import { stableId } from "../utils/ids.js";
-import { readTextFile } from "./read-safe.js";
+import { readEnvKeyNames, readTextFile } from "./read-safe.js";
 import {
   createSurfaceObject,
   detectActions,
@@ -24,8 +24,7 @@ import {
   inferTrustLevel,
   isReversible,
   isUntrustedToPrivileged,
-  redactedCommandSignals,
-  safeEnvKeyNames
+  redactedCommandSignals
 } from "./classify.js";
 
 export interface DetectedSurfaces {
@@ -75,14 +74,15 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
     const dirname = path.dirname(file.relativePath).replaceAll("\\", "/");
     const lowerPath = file.relativePath.toLowerCase();
     const lowerBase = basename.toLowerCase();
-    const text = await readTextFile(file);
+    const envFile = isEnvFile(basename);
+    const text = envFile ? undefined : await readTextFile(file);
 
     detectDirectoryHeuristics(file, seenDirectories, surfaces, {
       skipMemoryDirectory: isAgentMemoryStoreConfigPath(file.relativePath, basename)
     });
 
-    if (isEnvFile(basename)) {
-      const keyNames = text ? safeEnvKeyNames(text) : [];
+    if (envFile) {
+      const keyNames = await readEnvKeyNames(file);
       surfaces.secrets.push(
         createSurfaceObject({
           type: "secret",
@@ -23785,22 +23785,24 @@ function detectWorkflow(file: WalkedFile, text: string | undefined, surfaces: De
   const actions = detectActions(content);
   const triggerNames = extractWorkflowTriggers(parsed.on);
   const writePermissions = hasWritePermissions(permissions);
-  const mentionsSecretsContext = /secrets\./i.test(content);
+  const mentionsSecretsContext = /\$\{\{\s*secrets\./iu.test(content);
+  const referencesGithubToken = /\$\{\{\s*github\.token\b/iu.test(content);
+  const credentialReference = mentionsSecretsContext || referencesGithubToken;
   const runCommands = collectWorkflowRunCommands(parsed);
   const commandSignals = classifyWorkflowRunCommands(runCommands);
   const eventSignals = classifyWorkflowEventInput(triggerNames, parsed, content, commandSignals, runCommands);
   const untrustedEventPrivilegedBridge =
-    eventSignals.untrusted_event_agent_input && (writePermissions || mentionsSecretsContext || commandSignals.agent_package_script_names.length > 0);
+    eventSignals.untrusted_event_agent_input && (writePermissions || credentialReference || commandSignals.agent_package_script_names.length > 0);
   const object = createSurfaceObject({
     type: "ci_cd",
     name: path.basename(file.relativePath),
     path: file.relativePath,
     trust_level: "project",
-    data_classes: inferDataClasses(content, file.relativePath),
+    data_classes: workflowDataClasses(content, file.relativePath, credentialReference),
     actions: actions.length > 0 ? actions : ["execute"],
     side_effect: true,
     external_reach: hasExternalReach(content),
-    secret_exposure: hasSecretExposure(content),
+    secret_exposure: credentialReference,
     reversible: isReversible(content),
     reason: "GitHub Actions workflow discovered as CI/CD authority.",
     metadata: {
@@ -23811,6 +23813,7 @@ function detectWorkflow(file: WalkedFile, text: string | undefined, surfaces: De
       pull_request_trigger: triggerNames.some((trigger) => ["pull_request", "pull_request_target"].includes(trigger)),
       write_permissions: writePermissions,
       mentions_secrets_context: mentionsSecretsContext,
+      references_github_token: referencesGithubToken,
       ...commandSignals,
       ...eventSignals
     }
@@ -23823,6 +23826,8 @@ function detectWorkflow(file: WalkedFile, text: string | undefined, surfaces: De
     actions,
     writePermissions,
     mentionsSecretsContext,
+    credentialReference,
+    referencesGithubToken,
     commandSignals,
     eventSignals,
     permissions
@@ -23837,6 +23842,8 @@ function detectWorkflowAutomation(
     actions: ActionType[];
     writePermissions: boolean;
     mentionsSecretsContext: boolean;
+    credentialReference: boolean;
+    referencesGithubToken: boolean;
     commandSignals: WorkflowCommandSignals;
     eventSignals: WorkflowEventInputSignals;
     permissions: unknown;
@@ -23859,18 +23866,18 @@ function detectWorkflowAutomation(
   const actions = uniqueActions([
     ...(workflow.actions.length > 0 ? workflow.actions : (["execute"] as ActionType[])),
     ...(workflow.writePermissions ? (["write"] as ActionType[]) : []),
-    ...(workflow.mentionsSecretsContext ? (["call"] as ActionType[]) : [])
+    ...(workflow.credentialReference ? (["call"] as ActionType[]) : [])
   ]);
   const object = createSurfaceObject({
     type: "automation",
     name: `workflow:${path.basename(file.relativePath)}`,
     path: file.relativePath,
     trust_level: "project",
-    data_classes: workflow.mentionsSecretsContext ? ["credential"] : inferDataClasses(content, file.relativePath),
+    data_classes: workflowDataClasses(content, file.relativePath, workflow.credentialReference),
     actions,
     side_effect: true,
     external_reach: hasExternalReach(content) || automationTriggers.includes("repository_dispatch"),
-    secret_exposure: workflow.mentionsSecretsContext,
+    secret_exposure: workflow.credentialReference,
     reversible: isReversible(content),
     reason: "GitHub Actions workflow trigger discovered as agent-relevant automation.",
     metadata: {
@@ -23883,6 +23890,7 @@ function detectWorkflowAutomation(
       workflow_run_trigger: automationTriggers.includes("workflow_run"),
       write_permissions: workflow.writePermissions,
       mentions_secrets_context: workflow.mentionsSecretsContext,
+      references_github_token: workflow.referencesGithubToken,
       ...workflow.commandSignals,
       ...workflow.eventSignals,
       has_permissions_block: Boolean(workflow.permissions)
@@ -23891,13 +23899,19 @@ function detectWorkflowAutomation(
   const untrustedEventPrivilegedBridge =
     workflow.eventSignals.untrusted_event_agent_input &&
     (workflow.writePermissions ||
-      workflow.mentionsSecretsContext ||
+      workflow.credentialReference ||
       workflow.commandSignals.agent_package_script_names.length > 0 ||
       actions.some((action) => ["write", "execute", "publish", "send", "delete", "call"].includes(action)));
   surfaces.automations.push({
     ...object,
     untrusted_to_privileged: untrustedEventPrivilegedBridge || isUntrustedToPrivileged(object)
   });
+}
+
+function workflowDataClasses(content: string, filePath: string, credentialReference: boolean): DataClass[] {
+  const inferred = inferDataClasses(content, filePath).filter((value) => value !== "credential");
+  if (credentialReference) return ["credential", ...inferred];
+  return inferred.length > 0 ? inferred : ["unknown"];
 }
 
 function detectOpenApiToolSpec(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): boolean {
@@ -25011,6 +25025,14 @@ function detectRuntimeConfig(file: WalkedFile, text: string | undefined, surface
   }
 
   const posture = classifyRuntimeConfig(parseResult.value);
+  if (posture.runtime_posture_conflict || posture.runtime_profile_resolution === "unresolved_profiles") {
+    addDiagnostic(surfaces, file, {
+      parser: parseResult.parser ?? "runtime_config",
+      code: "RUNTIME_POSTURE_AMBIGUOUS",
+      reason:
+        "Runtime security posture contains conflicting fields or unresolved profiles. Ambiguous values were excluded from high-confidence classification."
+    });
+  }
   const actions = new Set<"read" | "write" | "execute" | "publish" | "send" | "delete" | "remember" | "approve" | "call">(["call"]);
   if (posture.privileged_tool_signals.some((signal) => ["shell", "terminal", "exec"].includes(signal))) actions.add("execute");
   if (posture.network_enabled) actions.add("send");
@@ -25035,6 +25057,12 @@ function detectRuntimeConfig(file: WalkedFile, text: string | undefined, surface
       content_redacted: true,
       parsed_runtime_config: true,
       runtime_fields: posture.runtime_fields,
+      sandbox_field_paths: posture.sandbox_field_paths,
+      approval_field_paths: posture.approval_field_paths,
+      network_field_paths: posture.network_field_paths,
+      runtime_profile: posture.runtime_profile,
+      runtime_profile_resolution: posture.runtime_profile_resolution,
+      runtime_posture_conflict: posture.runtime_posture_conflict,
       sandbox_mode: posture.sandbox_mode,
       sandbox_disabled: posture.sandbox_disabled,
       workspace_write: posture.workspace_write,
@@ -25075,6 +25103,22 @@ function detectRuntimeConfig(file: WalkedFile, text: string | undefined, surface
   });
   surfaces.runtime_config.push({
     ...object,
+    evidence: object.evidence.map((item) => ({
+      ...item,
+      parser: parseResult.parser,
+      field_paths: uniqueStrings([
+        ...posture.sandbox_field_paths,
+        ...posture.approval_field_paths,
+        ...posture.network_field_paths
+      ]),
+      classifications: uniqueStrings([
+        posture.sandbox_disabled ? "sandbox:disabled" : "sandbox:not-disabled",
+        posture.approval_bypass ? "approval:bypass" : "approval:not-bypassed",
+        posture.network_enabled ? "network:enabled" : "network:not-enabled",
+        posture.runtime_posture_conflict ? "posture:ambiguous" : "posture:resolved"
+      ]),
+      profile: posture.runtime_profile
+    })),
     untrusted_to_privileged: isUntrustedToPrivileged(object)
   });
 }
@@ -26484,6 +26528,12 @@ interface RuntimeField {
 
 interface RuntimePosture {
   runtime_fields: string[];
+  sandbox_field_paths: string[];
+  approval_field_paths: string[];
+  network_field_paths: string[];
+  runtime_profile?: string;
+  runtime_profile_resolution: "not_configured" | "active_profile" | "unresolved_profiles";
+  runtime_posture_conflict: boolean;
   sandbox_mode?: string;
   sandbox_disabled: boolean;
   workspace_write: boolean;
@@ -26557,12 +26607,30 @@ function parseRuntimeConfig(content: string, filePath: string): { value?: unknow
 }
 
 function classifyRuntimeConfig(value: unknown): RuntimePosture {
-  const fields = flattenRuntimeFields(value);
-  const sandboxMode = normalizeRuntimeScalar(findFirstField(fields, /(^|\.)sandbox(_mode|mode)?$|isolation|container/iu)?.value);
-  const approvalPolicy = normalizeRuntimeScalar(
-    findFirstField(fields, /approval|require_approval|tool_approval|human_approval|confirmation|confirm/iu)?.value
+  const allFields = flattenRuntimeFields(value);
+  const profileSelection = selectRuntimeProfileFields(allFields);
+  const fields = profileSelection.fields;
+  const sandboxFields = findRuntimeFields(
+    fields,
+    /(^|\.)(sandbox|sandbox_mode|sandboxmode|isolation|isolation_mode|container|container_mode)$/iu
   );
-  const networkAccess = normalizeRuntimeScalar(findFirstField(fields, /network|internet|web_access|allow_network|net_access/iu)?.value);
+  const approvalFields = findRuntimeFields(
+    fields,
+    /(^|\.)(approval|approval_policy|approvalpolicy|require_approval|tool_approval|human_approval|confirmation|confirmation_policy|confirm)$/iu
+  );
+  const networkFields = findRuntimeFields(
+    fields,
+    /(^|\.)(network|network_access|internet|internet_access|web_access|allow_network|net_access)$/iu
+  );
+  const sandboxValues = normalizedRuntimeValues(sandboxFields);
+  const approvalValues = normalizedRuntimeValues(approvalFields);
+  const networkValues = normalizedRuntimeValues(networkFields);
+  const sandboxMode = singleRuntimeValue(sandboxValues);
+  const approvalPolicy = singleRuntimeValue(approvalValues);
+  const networkAccess = singleRuntimeValue(networkValues);
+  const sandboxConflict = hasSemanticConflict(sandboxValues, classifySandboxValue);
+  const approvalConflict = hasSemanticConflict(approvalValues, classifyApprovalValue);
+  const networkConflict = hasSemanticConflict(networkValues, classifyNetworkValue);
   const rawPermissionAllowlist = collectStringArrayFields(fields, /(^|\.)permissions\.(allow|allowed|allowlist)$/iu);
   const rawPermissionDenylist = collectStringArrayFields(fields, /(^|\.)permissions\.(deny|denied|denylist|block|blocked)$/iu);
   const permissionAllowlist = normalizeRuntimePermissionEntries(rawPermissionAllowlist);
@@ -26588,7 +26656,7 @@ function classifyRuntimeConfig(value: unknown): RuntimePosture {
   const autoApprovedDestructiveMcpToolRefs = autoApprovedMcpToolRefs.filter((ref) => isDestructiveMcpToolRef(ref.toolName));
   const autoApprovedNetworkScopes = extractRuntimeNetworkScopes(rawPermissionAllowlist);
   const networkEnabled = Boolean(
-    (networkAccess && /true|yes|enabled|enable|on|full|unrestricted|allow/iu.test(networkAccess)) ||
+    (!networkConflict && networkValues.some((item) => classifyNetworkValue(item) === "enabled")) ||
       privilegedSignals.some((signal) => ["browser", "external_messaging", "github"].includes(signal)) ||
       autoApprovedNetworkScopes.length > 0
   );
@@ -26599,12 +26667,18 @@ function classifyRuntimeConfig(value: unknown): RuntimePosture {
       .map((field) => field.path)
       .filter((fieldPath) => isRuntimeSecurityField(fieldPath))
       .sort((a, b) => a.localeCompare(b)),
+    sandbox_field_paths: sandboxFields.map((field) => field.path).sort((a, b) => a.localeCompare(b)),
+    approval_field_paths: approvalFields.map((field) => field.path).sort((a, b) => a.localeCompare(b)),
+    network_field_paths: networkFields.map((field) => field.path).sort((a, b) => a.localeCompare(b)),
+    runtime_profile: profileSelection.profile,
+    runtime_profile_resolution: profileSelection.resolution,
+    runtime_posture_conflict: sandboxConflict || approvalConflict || networkConflict,
     sandbox_mode: sandboxMode,
-    sandbox_disabled: Boolean(sandboxMode && /danger|disable|none|off|false|unrestricted|full|host/iu.test(sandboxMode)),
-    workspace_write: Boolean(sandboxMode && /workspace.*write|write.*workspace|project.*write/iu.test(sandboxMode)),
+    sandbox_disabled: !sandboxConflict && sandboxValues.some((item) => classifySandboxValue(item) === "disabled"),
+    workspace_write: !sandboxConflict && sandboxValues.some((item) => classifySandboxValue(item) === "workspace_write"),
     approval_policy: approvalPolicy,
     approval_bypass: Boolean(
-      (approvalPolicy && /never|none|auto|always_allow|disabled|disable|off|false|unrestricted|no_approval|without/iu.test(approvalPolicy)) ||
+      (!approvalConflict && approvalValues.some((item) => classifyApprovalValue(item) === "bypass")) ||
         autoApprovedPrivilegedSignals.length > 0
     ),
     network_access: networkAccess,
@@ -26642,6 +26716,120 @@ function classifyRuntimeConfig(value: unknown): RuntimePosture {
     env_key_names: envKeys,
     secret_env_exposure: envKeys.some((key) => /token|secret|key|password|credential|auth/iu.test(key))
   };
+}
+
+function selectRuntimeProfileFields(fields: RuntimeField[]): {
+  fields: RuntimeField[];
+  profile?: string;
+  resolution: RuntimePosture["runtime_profile_resolution"];
+} {
+  const profile = normalizeRuntimeScalar(
+    findFirstField(fields, /^(profile|active_profile|default_profile)$/iu)?.value
+  );
+  const profileFields = fields.filter((field) => /^profiles\.[^.]+\./iu.test(field.path));
+  const nonProfileFields = fields.filter((field) => !/^profiles\.[^.]+\./iu.test(field.path));
+  if (profile) {
+    const activePrefix = `profiles.${profile}.`.toLowerCase();
+    const activeProfileFields = profileFields.filter((field) =>
+      field.path.toLowerCase().startsWith(activePrefix)
+    );
+    if (profileFields.length > 0 && activeProfileFields.length === 0) {
+      return {
+        fields: nonProfileFields,
+        profile,
+        resolution: "unresolved_profiles"
+      };
+    }
+    return {
+      fields: [...nonProfileFields, ...activeProfileFields],
+      profile,
+      resolution: "active_profile"
+    };
+  }
+  return {
+    fields: nonProfileFields,
+    resolution: profileFields.length > 0 ? "unresolved_profiles" : "not_configured"
+  };
+}
+
+function findRuntimeFields(fields: RuntimeField[], pathPattern: RegExp): RuntimeField[] {
+  return fields.filter((field) => pathPattern.test(field.path));
+}
+
+function normalizedRuntimeValues(fields: RuntimeField[]): string[] {
+  return uniqueStrings(
+    fields
+      .map((field) => normalizeRuntimeScalar(field.value))
+      .filter((value): value is string => Boolean(value))
+  );
+}
+
+function singleRuntimeValue(values: string[]): string | undefined {
+  return values.length === 1 ? values[0] : undefined;
+}
+
+type RuntimeSemanticClass = "disabled" | "workspace_write" | "bypass" | "required" | "enabled" | "unknown";
+
+function hasSemanticConflict(
+  values: string[],
+  classify: (value: string) => RuntimeSemanticClass
+): boolean {
+  const classes = new Set(values.map(classify).filter((value) => value !== "unknown"));
+  return classes.size > 1;
+}
+
+function normalizeRuntimeEnum(value: string): string {
+  return value.trim().toLowerCase().replace(/[\s_]+/gu, "-");
+}
+
+function classifySandboxValue(value: string): RuntimeSemanticClass {
+  const normalized = normalizeRuntimeEnum(value);
+  if (
+    new Set([
+      "danger-full-access",
+      "disabled",
+      "false",
+      "host",
+      "host-access",
+      "none",
+      "off",
+      "unrestricted"
+    ]).has(normalized)
+  ) return "disabled";
+  if (new Set(["project-write", "workspace-write"]).has(normalized)) return "workspace_write";
+  if (new Set(["container", "enabled", "read-only", "sandboxed", "strict", "true"]).has(normalized)) return "required";
+  return "unknown";
+}
+
+function classifyApprovalValue(value: string): RuntimeSemanticClass {
+  const normalized = normalizeRuntimeEnum(value);
+  if (
+    new Set([
+      "always-allow",
+      "auto-approve",
+      "auto-approved",
+      "automatic",
+      "disabled",
+      "false",
+      "never",
+      "no-approval",
+      "none",
+      "off",
+      "unrestricted",
+      "without-approval"
+    ]).has(normalized)
+  ) return "bypass";
+  if (new Set(["always", "enabled", "on-failure", "on-request", "required", "true", "untrusted"]).has(normalized)) {
+    return "required";
+  }
+  return "unknown";
+}
+
+function classifyNetworkValue(value: string): RuntimeSemanticClass {
+  const normalized = normalizeRuntimeEnum(value);
+  if (new Set(["allow", "enabled", "full", "on", "true", "unrestricted", "yes"]).has(normalized)) return "enabled";
+  if (new Set(["deny", "disabled", "false", "none", "off", "restricted"]).has(normalized)) return "disabled";
+  return "unknown";
 }
 
 function flattenRuntimeFields(value: unknown, prefix: string[] = []): RuntimeField[] {

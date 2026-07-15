@@ -11,6 +11,7 @@ coverage/
 .agentcsp/
 .agentcsp*/
 !.agentcspignore
+.gstack/
 agent-manifest.json
 findings.json
 agentcsp-report.json

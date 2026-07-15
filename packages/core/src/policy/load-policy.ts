@@ -24,6 +24,14 @@ export interface LoadedPolicy {
   diagnostics: ScanDiagnostic[];
 }
 
+export interface PolicyLoadOptions {
+  loadProjectDefault?: boolean;
+  maxBytes?: number;
+  verifiedContent?: Uint8Array;
+}
+
+const defaultMaxPolicyBytes = 1024 * 1024;
+
 export async function loadPolicy(rootPath: string, configPath?: string): Promise<Policy> {
   const candidate = policyCandidate(rootPath, configPath);
   try {
@@ -36,11 +44,52 @@ export async function loadPolicy(rootPath: string, configPath?: string): Promise
   }
 }
 
-export async function loadPolicyWithDiagnostics(rootPath: string, configPath?: string): Promise<LoadedPolicy> {
+export async function loadPolicyWithDiagnostics(
+  rootPath: string,
+  configPath?: string,
+  options: PolicyLoadOptions = {}
+): Promise<LoadedPolicy> {
   const emptyPolicy = PolicySchema.parse({});
+  if (!configPath && options.loadProjectDefault === false) {
+    const projectPolicy = path.join(rootPath, "agentcsp.yaml");
+    try {
+      await fs.access(projectPolicy);
+      return {
+        policy: emptyPolicy,
+        diagnostics: [
+          {
+            ...policyDiagnostic(rootPath, projectPolicy, {
+              code: "PROJECT_POLICY_IGNORED",
+              reason: "Repository policy was discovered but not applied by the ci_strict profile."
+            }),
+            severity: "info"
+          }
+        ]
+      };
+    } catch {
+      return { policy: emptyPolicy, diagnostics: [] };
+    }
+  }
   const candidate = policyCandidate(rootPath, configPath);
   try {
-    const content = await fs.readFile(candidate, "utf8");
+    let content: string;
+    if (options.verifiedContent) {
+      content = Buffer.from(options.verifiedContent).toString("utf8");
+    } else {
+      const stats = await fs.stat(candidate);
+      if (stats.size > (options.maxBytes ?? defaultMaxPolicyBytes)) {
+        return {
+          policy: emptyPolicy,
+          diagnostics: [
+            policyDiagnostic(rootPath, candidate, {
+              code: "POLICY_CONFIG_TOO_LARGE",
+              reason: `AgentCSP policy exceeds the ${options.maxBytes ?? defaultMaxPolicyBytes}-byte safety limit and was not loaded.`
+            })
+          ]
+        };
+      }
+      content = await fs.readFile(candidate, "utf8");
+    }
     return { policy: PolicySchema.parse(YAML.parse(content) ?? {}), diagnostics: [] };
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code;
@@ -109,18 +158,41 @@ function isValidationError(error: unknown): boolean {
   );
 }
 
-export function applyTrustOverrides<T extends SurfaceObject>(objects: T[], policy: Policy): T[] {
+export function applyTrustOverrides<T extends SurfaceObject>(
+  objects: T[],
+  policy: Policy,
+  authority: "project" | "operator" = "project"
+): T[] {
   return objects.map((object) => {
     const override = policy.trust_overrides.find((entry) =>
       minimatch(object.path, entry.path, { dot: true })
     );
     if (!override) return object;
-    return { ...object, trust_level: override.trust_level as TrustLevel };
+    return {
+      ...object,
+      trust_level: override.trust_level as TrustLevel,
+      metadata: {
+        ...object.metadata,
+        trust_provenance: {
+          source: "policy_override",
+          authority,
+          previous: object.trust_level,
+          applied: override.trust_level
+        }
+      }
+    };
   });
 }
 
-export function applyFindingSuppressions(findings: Finding[], policy: Policy, now = new Date()): Finding[] {
+export function applyFindingSuppressions(
+  findings: Finding[],
+  policy: Policy,
+  now = new Date(),
+  authority: "project" | "operator" = "project"
+): Finding[] {
   return findings.map((finding) => {
+    if (finding.suppressibility === "never") return finding;
+    if (finding.suppressibility === "trusted_policy_only" && authority !== "operator") return finding;
     const suppression = policy.suppressions.find((entry) => suppressionMatches(finding, entry));
     if (!suppression) return finding;
     const status = isSuppressionActive(suppression.expires_at, now) ? "active" : "expired";
