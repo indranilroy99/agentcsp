@@ -5,11 +5,11 @@ import YAML from "yaml";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const actionRefs = {
-  checkout: "actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd",
-  setupNode: "actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444",
+  checkout: "actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10",
+  setupNode: "actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38",
   setupPnpm: "pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320",
-  uploadArtifact: "actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4",
-  downloadArtifact: "actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0",
+  uploadArtifact: "actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f",
+  downloadArtifact: "actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53",
   uploadSarif: "github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9"
 };
 const workspacePackage = JSON.parse(await fs.readFile(path.join(repoRoot, "package.json"), "utf8"));
