@@ -8,8 +8,8 @@ const actionRefs = {
   checkout: "actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10",
   setupNode: "actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38",
   setupPnpm: "pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320",
-  uploadArtifact: "actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f",
-  downloadArtifact: "actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53",
+  uploadArtifact: "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
+  downloadArtifact: "actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c",
   uploadSarif: "github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9"
 };
 const workspacePackage = JSON.parse(await fs.readFile(path.join(repoRoot, "package.json"), "utf8"));
