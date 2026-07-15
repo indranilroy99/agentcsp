@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import { execFile } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -247,8 +247,8 @@ function assertTarballEntries(packageName, entries, expectedEntries) {
 
 async function smokeTestInstalledCli(coreTarball, cliTarball, installRoot) {
   await fs.mkdir(installRoot, { recursive: true });
-  const coreTarballUrl = pathToFileURL(coreTarball).href;
-  const cliTarballUrl = pathToFileURL(cliTarball).href;
+  const coreTarballSpecifier = fileDependencySpecifier(installRoot, coreTarball);
+  const cliTarballSpecifier = fileDependencySpecifier(installRoot, cliTarball);
   await fs.writeFile(
     path.join(installRoot, "package.json"),
     `${JSON.stringify(
@@ -258,8 +258,8 @@ async function smokeTestInstalledCli(coreTarball, cliTarball, installRoot) {
         private: true,
         type: "module",
         dependencies: {
-          "@agentcsp/core": coreTarballUrl,
-          agentcsp: cliTarballUrl
+          "@agentcsp/core": coreTarballSpecifier,
+          agentcsp: cliTarballSpecifier
         }
       },
       null,
@@ -268,7 +268,7 @@ async function smokeTestInstalledCli(coreTarball, cliTarball, installRoot) {
   );
   await fs.writeFile(
     path.join(installRoot, "pnpm-workspace.yaml"),
-    `packages:\n  - .\noverrides:\n  "@agentcsp/core": "${coreTarballUrl}"\n`
+    `packages:\n  - .\noverrides:\n  "@agentcsp/core": "${coreTarballSpecifier}"\n`
   );
 
   await executePackageManager(["install", "--prefer-offline"], {
@@ -506,6 +506,11 @@ function executePackageManager(args, options) {
     ...options,
     shell: process.platform === "win32"
   });
+}
+
+function fileDependencySpecifier(fromDirectory, targetPath) {
+  const relativePath = path.relative(fromDirectory, targetPath).split(path.sep).join("/");
+  return `file:${relativePath.startsWith(".") ? relativePath : `./${relativePath}`}`;
 }
 
 async function readPackageJson(relativePackageJson) {
