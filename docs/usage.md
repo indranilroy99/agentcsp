@@ -61,7 +61,7 @@ Internal artifacts retain parser metadata, policy ownership, and full normalized
 Default included hidden paths:
 
 ```text
-.codex .agents .claude .cursor .github .well-known
+.codex .agents .claude .cline .continue .cursor .github .junie .kiro .opencode .roo .well-known .windsurf
 ```
 
 Default excluded paths include `.git`, dependency directories, build output, coverage, caches, prior AgentCSP output, and logs. Use:
@@ -77,6 +77,8 @@ agentcsp scan . \
 ```
 
 The advisory profile supports `.agentcspignore`. `ci-strict` ignores repository-controlled ignore files.
+
+See [Ecosystem Support](ecosystem-support.md) for named repository adapters and their boundaries.
 
 `scan_coverage.scan_health` is:
 

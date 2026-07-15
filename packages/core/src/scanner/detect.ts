@@ -369,7 +369,8 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
-    if (INSTRUCTION_FILE_NAMES.has(basename) || isCursorRulePath(lowerPath)) {
+    const instructionAdapter = agentInstructionAdapter(file.relativePath, basename);
+    if (INSTRUCTION_FILE_NAMES.has(basename) || instructionAdapter || isCursorRulePath(lowerPath)) {
       const content = text ?? "";
       const cursorRule = isCursorRulePath(lowerPath) ? classifyCursorRule(file, content, surfaces) : undefined;
       const analyzedContent = cursorRule?.analyzedContent ?? content;
@@ -406,6 +407,7 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
             bytes: file.size,
             skipped_for_size: file.skippedForSize,
             content_redacted: true,
+            agent_adapter: instructionAdapter,
             ...cursorRule?.metadata,
             ...signals
           }
@@ -478,9 +480,9 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
 
     if (isOpenApiToolSpecPath(file.relativePath, basename) && detectOpenApiToolSpec(file, text, surfaces)) continue;
 
-    if (DEFAULT_MCP_CONFIG_NAMES.has(basename) || lowerPath.endsWith("/mcp.json")) {
+    if (isMcpConfigPath(file.relativePath, basename)) {
       await detectMcpConfig(file, text, surfaces, projectFilePaths);
-      continue;
+      if (!isCompositeAgentConfigPath(file.relativePath)) continue;
     }
 
     if (isMcpSourceToolPath(file.relativePath, basename) && detectMcpSourceToolDefinitions(file, text, surfaces)) {
@@ -2870,6 +2872,7 @@ function detectAgentApprovalGateConfig(file: WalkedFile, text: string | undefine
       posture.secret_ref_key_names.length > 0,
     reason: "Agent approval-gate configuration discovered as privileged decision posture.",
     metadata: {
+      agent_adapter: agentConfigAdapter(file.relativePath),
       content_redacted: true,
       values_collected: false,
       parsed_agent_approval_config: Boolean(parsed.value) && !parsed.parseFailed,
@@ -22830,6 +22833,37 @@ function isCursorRulePath(lowerPath: string): boolean {
   return lowerPath.includes(".cursor/rules/");
 }
 
+function agentInstructionAdapter(relativePath: string, basename: string): string | undefined {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const markdown = /\.md$/iu.test(basename);
+
+  if (basename === "AGENTS.md") return "agentsmd";
+  if (
+    basename === "CLAUDE.md" ||
+    (normalized.startsWith(".claude/") && /(?:agents|commands|skills)\//iu.test(normalized) && markdown)
+  ) {
+    return "claude_code";
+  }
+  if (basename === "GEMINI.md") return "gemini_cli";
+  if (basename === "CURSOR.md" || normalized.startsWith(".cursor/rules/")) return "cursor";
+  if (
+    normalized === ".github/copilot-instructions.md" ||
+    (normalized.startsWith(".github/instructions/") && normalized.endsWith(".instructions.md")) ||
+    (normalized.startsWith(".github/agents/") && markdown) ||
+    (normalized.startsWith(".github/prompts/") && normalized.endsWith(".prompt.md"))
+  ) {
+    return "github_copilot";
+  }
+  if (normalized.startsWith(".continue/") && /(?:rules|prompts|agents)\//iu.test(normalized) && markdown) return "continue";
+  if (normalized.startsWith(".opencode/") && /(?:agents|commands|skills)\//iu.test(normalized) && markdown) return "opencode";
+  if (normalized.startsWith(".kiro/") && /(?:agents|prompts|steering)\//iu.test(normalized) && markdown) return "kiro";
+  if (normalized.startsWith(".windsurf/") && /(?:rules|workflows)\//iu.test(normalized) && markdown) return "windsurf";
+  if (normalized.startsWith(".cline/") && /(?:rules|workflows)\//iu.test(normalized) && markdown) return "cline";
+  if (normalized.startsWith(".roo/") && /(?:rules|workflows)\//iu.test(normalized) && markdown) return "roo_code";
+  if (normalized.startsWith(".junie/") && markdown) return "junie";
+  return undefined;
+}
+
 function classifyCursorRule(
   file: WalkedFile,
   content: string,
@@ -23307,19 +23341,13 @@ async function detectMcpConfig(
   projectFilePaths: Set<string>
 ): Promise<void> {
   const raw = text ?? "{}";
-  let parsed: unknown;
-  let parseFailed = false;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    parseFailed = raw.trim().length > 0;
-    parsed = {};
-  }
-  if (parseFailed) {
+  const parseResult = parseStructuredConfig(raw, file.relativePath);
+  const parsed = parseResult.value ?? {};
+  if (parseResult.parseFailed) {
     addDiagnostic(surfaces, file, {
-      parser: "json",
+      parser: parseResult.parser ?? "structured_config",
       code: "MCP_CONFIG_PARSE_FAILED",
-      reason: "MCP configuration could not be parsed as JSON. Raw content was redacted."
+      reason: "MCP configuration could not be parsed as a supported structured format. Raw content was redacted."
     });
   }
   const servers = extractMcpServers(parsed);
@@ -23332,7 +23360,13 @@ async function detectMcpConfig(
         actions: ["call"],
         side_effect: true,
         reason: "MCP configuration discovered.",
-        metadata: { content_redacted: true, server_count: 0, parse_error: parseFailed }
+        metadata: {
+          content_redacted: true,
+          server_count: 0,
+          parse_error: parseResult.parseFailed,
+          parser: parseResult.parser,
+          agent_adapter: agentConfigAdapter(file.relativePath)
+        }
       })
     );
     return;
@@ -23424,6 +23458,7 @@ async function detectMcpConfig(
       reversible: !toolCatalog.privilegedToolAuthority && !resourceSubscriptions.privilegedBridge && isReversible(signalText),
       reason: "MCP server configuration exposes agent-callable tools and authority.",
       metadata: {
+        agent_adapter: agentConfigAdapter(file.relativePath),
         command_name: server.command ? path.basename(server.command) : undefined,
         args_count: server.args?.length ?? 0,
         transport: server.transport,
@@ -25014,6 +25049,7 @@ function detectRuntimeConfig(file: WalkedFile, text: string | undefined, surface
       actions: ["call"],
       reason: "Agent runtime configuration file discovered but not parsed.",
       metadata: {
+        agent_adapter: agentConfigAdapter(file.relativePath),
         content_redacted: true,
         parsed_runtime_config: false,
         parse_error: parseResult.parseFailed,
@@ -25054,6 +25090,7 @@ function detectRuntimeConfig(file: WalkedFile, text: string | undefined, surface
     secret_exposure: posture.secret_env_exposure,
     reason: "Agent runtime configuration discovered as policy-relevant execution posture.",
     metadata: {
+      agent_adapter: agentConfigAdapter(file.relativePath),
       content_redacted: true,
       parsed_runtime_config: true,
       runtime_fields: posture.runtime_fields,
@@ -25320,9 +25357,17 @@ function detectMcpContextSurfaces(
 function extractMcpServers(value: unknown): ExtractedMcpServer[] {
   if (!value || typeof value !== "object") return [];
   const root = value as Record<string, unknown>;
-  const container = (root.mcpServers ?? root.servers) as Record<string, unknown> | undefined;
-  if (!container || typeof container !== "object") return [];
-  return Object.entries(container).map(([name, config]) => {
+  const container = root.mcpServers ?? root.servers;
+  const entries = Array.isArray(container)
+    ? container.flatMap((config, index) => {
+        if (!config || typeof config !== "object") return [];
+        const record = config as Record<string, unknown>;
+        return [[typeof record.name === "string" && record.name.trim() ? record.name : `server-${index + 1}`, record] as const];
+      })
+    : container && typeof container === "object"
+      ? Object.entries(container as Record<string, unknown>)
+      : [];
+  return entries.map(([name, config]) => {
     const serverConfig = (config ?? {}) as Record<string, unknown>;
     const envExposure = classifyMcpEnvironmentExposure(serverConfig);
     const args = Array.isArray(serverConfig.args) ? serverConfig.args.filter((arg): arg is string => typeof arg === "string") : [];
@@ -26521,6 +26566,41 @@ const TOP_LEVEL_RUNTIME_CONFIG_NAMES = new Set([
   "codex.yml"
 ]);
 
+function isMcpConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (DEFAULT_MCP_CONFIG_NAMES.has(lowerBase) || normalized.endsWith("/mcp.json")) return true;
+  if (normalized.startsWith(".continue/mcpservers/") && /\.(json|ya?ml)$/iu.test(lowerBase)) return true;
+  if (normalized === ".continue/config.yaml" || normalized === ".continue/config.yml" || normalized === ".continue/config.json") return true;
+  if (normalized === ".kiro/settings/mcp.json") return true;
+  return false;
+}
+
+function isCompositeAgentConfigPath(relativePath: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  return (
+    normalized === ".continue/config.yaml" ||
+    normalized === ".continue/config.yml" ||
+    normalized === ".continue/config.json" ||
+    normalized === ".kiro/settings/mcp.json"
+  );
+}
+
+function agentConfigAdapter(relativePath: string): string | undefined {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  if (normalized.startsWith(".codex/") || normalized.startsWith("codex.")) return "codex";
+  if (normalized.startsWith(".claude/")) return "claude_code";
+  if (normalized.startsWith(".cursor/")) return "cursor";
+  if (normalized.startsWith(".cline/")) return "cline";
+  if (normalized.startsWith(".continue/")) return "continue";
+  if (normalized.startsWith(".kiro/")) return "kiro";
+  if (normalized === "opencode.json") return "opencode";
+  if (normalized.startsWith(".opencode/")) return "opencode";
+  if (normalized.startsWith(".roo/")) return "roo_code";
+  if (normalized.startsWith(".windsurf/")) return "windsurf";
+  return undefined;
+}
+
 interface RuntimeField {
   path: string;
   value: unknown;
@@ -26575,10 +26655,13 @@ function isRuntimeConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
   if (TOP_LEVEL_RUNTIME_CONFIG_NAMES.has(lowerBase) && !normalized.includes("/")) return true;
-  if (normalized.startsWith(".codex/") && RUNTIME_CONFIG_BASENAMES.has(lowerBase)) return true;
-  if (normalized.startsWith(".agents/") && RUNTIME_CONFIG_BASENAMES.has(lowerBase)) return true;
-  if (normalized.startsWith(".claude/") && RUNTIME_CONFIG_BASENAMES.has(lowerBase)) return true;
-  if (normalized.startsWith(".cursor/") && RUNTIME_CONFIG_BASENAMES.has(lowerBase)) return true;
+  if (normalized === "opencode.json") return true;
+  if (normalized === ".kiro/settings/mcp.json") return true;
+  if (/^\.(?:agents|claude|cline|codex|continue|cursor|kiro|opencode|roo|windsurf)\//iu.test(normalized) && RUNTIME_CONFIG_BASENAMES.has(lowerBase)) {
+    return true;
+  }
+  if (normalized.startsWith(".kiro/hooks/") && lowerBase.endsWith(".json")) return true;
+  if (normalized === ".kiro/permissions.yaml" || normalized === ".kiro/permissions.yml") return true;
   return false;
 }
 

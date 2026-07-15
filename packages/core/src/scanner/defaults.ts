@@ -24,15 +24,24 @@ export const DEFAULT_INCLUDED_HIDDEN_DIRS = new Set([
   ".codex",
   ".agents",
   ".claude",
+  ".cline",
+  ".continue",
   ".cursor",
   ".github",
-  ".well-known"
+  ".junie",
+  ".kiro",
+  ".opencode",
+  ".roo",
+  ".well-known",
+  ".windsurf"
 ]);
 
 export const DEFAULT_MCP_CONFIG_NAMES = new Set([
   "mcp.json",
   "mcp.config.json",
   ".mcp.json",
+  "mcp_settings.json",
+  "mcp-settings.json",
   "claude_desktop_config.json"
 ]);
 

@@ -45,6 +45,12 @@ The scanner also inventories instructions, skills, plugins, prompts, MCP servers
 
 AgentCSP reports a **Static Blast-Radius Summary**. It does not claim runtime reachability or exploitability.
 
+## Ecosystem Coverage
+
+AgentCSP has named repository-scoped adapters for Agents.md, Codex, Claude Code, Gemini CLI, Cursor, GitHub Copilot, Continue, OpenCode, Kiro, Cline, Roo Code, Windsurf, and Junie. It also retains generic discovery for MCP, skills, tools, prompts, workflows, RAG, memory, and agent frameworks.
+
+See [Ecosystem Support](docs/ecosystem-support.md) for exact paths, normalized surfaces, and the boundary around user-global and deployed configuration.
+
 ## Quick Start
 
 The current release candidate is built from source. npm publication is a separate release step.
@@ -142,7 +148,7 @@ No v0.2 rule is independently calibrated for automatic blocking. The synthetic c
 - Raw file contents are not copied into the manifest.
 - Files and directories have configurable limits.
 - `.git`, dependencies, generated output, caches, and logs are excluded by default.
-- Hidden AI/security paths such as `.codex`, `.agents`, `.claude`, `.cursor`, and `.github` are included by default.
+- Hidden AI/security paths such as `.codex`, `.agents`, `.claude`, `.cline`, `.continue`, `.cursor`, `.github`, `.kiro`, `.opencode`, `.roo`, and `.windsurf` are included by default.
 - `.agentcspignore` is supported in advisory scans.
 - Output is staged, schema-validated, permission-restricted, atomically published, and accompanied by SHA-256 digests.
 - Paths, object IDs, finding IDs, ordering, and fingerprints are deterministic.
