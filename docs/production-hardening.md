@@ -18,7 +18,7 @@ Evidence recorded on 2026-07-15:
 - The installed-package smoke test verifies both workspace packages and all 383 packaged rules through a clean package-manager tarball installation, with Windows-safe command execution.
 - The recommended ruleset contains 17 bounded advisory rules; the 383-rule research catalog remains opt-in as `extended`.
 - A 150-case synthetic parser-conformance benchmark passes with no mismatches. It is explicitly non-enforcement-eligible and is not presented as production precision evidence.
-- The five-run scale gate indexes 5,000 files and 104,860,000 bytes at 1,766 ms p95 and 177,717,248 bytes peak RSS on the documented reference host.
+- The five-run scale gate indexes 5,000 files and 104,860,000 bytes at 1,841 ms p95 and 188,137,472 bytes peak RSS on the documented reference host.
 - Two independent code-review rounds found and closed output-lock ownership, unresolved runtime-profile, baseline-error-classification, trusted-input time-of-check/time-of-use, shared scanner-version, and semantic minimum-version defects with regression tests.
 - Protected-profile tests prove that explicit policy and baseline inputs are rejected unless they carry a matching SHA-256 digest, resolve outside the scan root, and are regular files.
 - CycloneDX 1.6 SBOM generation is deterministic and the release workflow produces checksums and GitHub attestations from immutable action pins.
@@ -29,7 +29,7 @@ Remaining enforcement-grade blockers are deliberately narrow: an independently l
 
 The Autoplan CEO, engineering, and developer-experience review record is complete. A post-fix independent CEO and security-product re-review found no P0 or P1 blocker for pushing the advisory, source-built public-preview candidate. It verified that package smoke execution uses `pnpm.cmd` and the Node runtime on Windows, and that trusted policy and baseline inputs reject non-regular files before they are read. The review also independently reran the focused trust/CLI tests, full 159-test suite, lint, and scale envelope.
 
-This is an AI-assisted engineering review, not a substitute for an external professional security assessment. The pushed commit must still pass the hosted Verify, Linux/Node 20, Windows/Node 22, and macOS/Node 24 jobs before the preview is announced. npm publication, GitHub release tagging, and enforcement-grade claims remain out of scope until their documented prerequisites are satisfied.
+This is an AI-assisted engineering review, not a substitute for an external professional security assessment. The pushed commit must still pass the hosted Verify, Linux/Node 22, Windows/Node 22, and macOS/Node 24 jobs before the preview is announced. npm publication, GitHub release tagging, and enforcement-grade claims remain out of scope until their documented prerequisites are satisfied.
 
 ### Locked Premises
 
@@ -711,7 +711,7 @@ lifecycle commands
 release
 |- pack core + CLI                                             tarball verifier
 |- SBOM/checksum/provenance metadata                           release dry run
-|- Linux/macOS/Windows, Node 20/22/24                          smoke matrix
+|- Linux/macOS/Windows, Node 22/22/24                          smoke matrix
 `- install from produced tarball/registry candidate            E2E
 
 detection eval

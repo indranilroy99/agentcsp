@@ -28,8 +28,8 @@ Reference environment: macOS arm64, 8 logical CPUs, 16 GiB memory, Node.js 26.4.
 | --- | ---: |
 | Files indexed | 5,000 |
 | Input size | 104,860,000 bytes |
-| Runtime p95 | 1,766 ms |
-| Peak RSS | 177,717,248 bytes |
+| Runtime p95 | 1,841 ms |
+| Peak RSS | 188,137,472 bytes |
 | Scan health | `complete` |
 | Manifest plus findings JSON | 9,523 bytes |
 

@@ -36,6 +36,7 @@ All notable changes to AgentCSP are documented here. The format follows [Keep a 
 - runtime security values use exact semantic classification instead of broad substring matches
 - workflow credential posture recognizes actual GitHub token and secret-context references without treating disabled credential persistence as exposure
 - package smoke tests install the packed tarballs through pnpm and invoke the CLI through Node for Windows-compatible release verification
+- supported runtime baseline is Node.js 22 or newer, matching the pnpm 11 toolchain and hosted compatibility matrix
 - public product language describes static posture analysis and recommended controls, not runtime enforcement
 
 ### Security

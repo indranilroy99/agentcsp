@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://github.com/indranilroy99/agentcsp/actions/workflows/ci.yml"><img src="https://github.com/indranilroy99/agentcsp/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-2f6feb" alt="Apache 2.0 license"></a>
-  <img src="https://img.shields.io/badge/node-%3E%3D20-339933" alt="Node.js 20 or newer">
+  <img src="https://img.shields.io/badge/node-%3E%3D22-339933" alt="Node.js 22 or newer">
   <img src="https://img.shields.io/badge/rules-advisory-6b7280" alt="Advisory rules">
 </p>
 

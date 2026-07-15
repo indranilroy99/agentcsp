@@ -84,7 +84,7 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            node: 20
+            node: 22
           - os: windows-latest
             node: 22
           - os: macos-latest

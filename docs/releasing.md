@@ -31,7 +31,7 @@ The release owner generates `agentcsp.cdx.json`, verifies that it contains only 
 
 1. Create a signed `vX.Y.Z` tag from the verified commit. The tag must exactly match the workspace version.
 2. The tag-only release workflow reruns `pnpm verify:release`, builds both tarballs, generates the deterministic CycloneDX 1.6 SBOM, records SHA-256 checksums, creates GitHub artifact attestations, and creates the GitHub release.
-3. Verify installation in a clean environment with Node.js 20 and the current LTS release.
+3. Verify installation in a clean environment with Node.js 22 and the current LTS release.
 4. When registry distribution is approved, publish `@agentcsp/core` before `agentcsp` through a separate protected npm environment configured for trusted publishing. npm publication is not performed by the GitHub-release workflow.
 5. Add known limitations and rollback instructions to the generated GitHub release notes.
 6. Confirm the example advisory scan passes from the published package.

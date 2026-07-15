@@ -99,8 +99,8 @@ async function assertPublishMetadata(relativePackageJson, options = {}) {
   if (packageJson.homepage !== "https://github.com/indranilroy99/agentcsp#readme") {
     throw new Error(`${packageLabel} must declare the canonical README homepage`);
   }
-  if (packageJson.engines?.node !== ">=20") {
-    throw new Error(`${packageLabel} must declare Node.js >=20 runtime support`);
+  if (packageJson.engines?.node !== ">=22") {
+    throw new Error(`${packageLabel} must declare Node.js >=22 runtime support`);
   }
   if (options.directory && packageJson.publishConfig?.access !== "public") {
     throw new Error(`${packageLabel} must publish with public access`);
@@ -215,7 +215,7 @@ async function verifyPackedPackageInstall(expectedRuleCount) {
 
 async function packWorkspacePackage(packageName, destination) {
   await fs.mkdir(destination, { recursive: true });
-  await execFileAsync(packageManagerCommand(), ["--filter", packageName, "pack", "--pack-destination", destination], {
+  await executePackageManager(["--filter", packageName, "pack", "--pack-destination", destination], {
     cwd: repoRoot,
     maxBuffer: 10 * 1024 * 1024
   });
@@ -271,7 +271,7 @@ async function smokeTestInstalledCli(coreTarball, cliTarball, installRoot) {
     `packages:\n  - .\noverrides:\n  "@agentcsp/core": "${coreTarballUrl}"\n`
   );
 
-  await execFileAsync(packageManagerCommand(), ["install", "--offline"], {
+  await executePackageManager(["install", "--prefer-offline"], {
     cwd: installRoot,
     maxBuffer: 20 * 1024 * 1024
   });
@@ -501,8 +501,11 @@ async function assertInstalledPackageMetadata(installedCorePath, installedCliPat
   }
 }
 
-function packageManagerCommand() {
-  return process.platform === "win32" ? "pnpm.cmd" : "pnpm";
+function executePackageManager(args, options) {
+  return execFileAsync(process.platform === "win32" ? "pnpm.cmd" : "pnpm", args, {
+    ...options,
+    shell: process.platform === "win32"
+  });
 }
 
 async function readPackageJson(relativePackageJson) {
