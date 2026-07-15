@@ -7,6 +7,7 @@ import { runBaselineCreate, runBaselineDiff, runBaselineMigrate } from "./comman
 import { runConfigValidate } from "./commands/config.js";
 import { runDoctor } from "./commands/doctor.js";
 import { runRulesExplain, runRulesList } from "./commands/rules.js";
+import { runGuardCheck, runGuardInstall, runGuardStatus, runGuardUninstall, type GuardHook } from "./commands/guard.js";
 import {
   configurationError,
   exitCodeForError,
@@ -105,6 +106,38 @@ baselineCommand
   .requiredOption("--out <path>", "migrated baseline output path")
   .option("--json", "emit a machine-readable result")
   .action(async (source: string, options: { out: string; json?: boolean }) => runBaselineMigrate(source, options));
+
+const guardCommand = program.command("guard").description("Install and operate redacted Git secret guards.");
+guardCommand
+  .command("install")
+  .description("Install managed pre-commit and pre-push guards in a Git repository.")
+  .argument("[path]", "repository path", ".")
+  .option("--json", "emit a machine-readable result")
+  .action(async (targetPath: string, options: { json?: boolean }) => runGuardInstall(targetPath, options));
+guardCommand
+  .command("status")
+  .description("Show managed Git guard status without reading staged content.")
+  .argument("[path]", "repository path", ".")
+  .option("--json", "emit a machine-readable result")
+  .action(async (targetPath: string, options: { json?: boolean }) => runGuardStatus(targetPath, options));
+guardCommand
+  .command("uninstall")
+  .description("Remove managed Git guards and restore a preserved hook when available.")
+  .argument("[path]", "repository path", ".")
+  .option("--json", "emit a machine-readable result")
+  .action(async (targetPath: string, options: { json?: boolean }) => runGuardUninstall(targetPath, options));
+guardCommand
+  .command("check")
+  .description("Inspect staged or outgoing Git diffs for secret exposure without printing values.")
+  .argument("[path]", "repository path", ".")
+  .option("--hook <hook>", "diff source: pre-commit or pre-push", "pre-commit")
+  .option("--json", "emit a machine-readable result")
+  .action(async (targetPath: string, options: { hook?: GuardHook; json?: boolean }) => {
+    if (options.hook !== "pre-commit" && options.hook !== "pre-push") {
+      throw configurationError("Guard hook must be pre-commit or pre-push.", "Use --hook pre-commit or --hook pre-push.");
+    }
+    await runGuardCheck(targetPath, options);
+  });
 
 program
   .command("doctor")

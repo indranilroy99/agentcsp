@@ -125,6 +125,27 @@ agentcsp scan . --fail-on-expired-suppressions
 
 See [CI Integration](ci.md) and [Detection Quality](detection-quality.md) before using findings as a merge policy.
 
+## Git Guard
+
+Install an opt-in local guard for Git operations performed by a developer or coding assistant:
+
+```bash
+agentcsp guard install
+agentcsp guard status
+```
+
+The managed `pre-commit` hook inspects staged changes. The managed `pre-push` hook receives Git's outgoing ref ranges and inspects the commits that would be sent. The guard blocks likely GitHub and GitLab tokens, OpenAI and Anthropic API keys, Slack tokens, AWS access keys, private-key headers, credentialed URLs, high-confidence secret assignments, and non-template `.env` files.
+
+```bash
+agentcsp guard check
+agentcsp guard check --hook pre-push
+agentcsp guard uninstall
+```
+
+Guard output contains only a file path, secret class, and SHA-256 fingerprint. It never prints the matched value or writes it into AgentCSP scan artifacts.
+
+An existing regular hook is preserved as `HOOK.agentcsp-user` and chained before the AgentCSP hook. AgentCSP refuses to modify a shared or globally inherited `core.hooksPath`; configure a repository-local hooks path or use your central hooks-management workflow instead. Git hooks are bypassable with `--no-verify` and do not intercept non-Git outbound transfers, so use CI, protected branches, and provider-side push protection for layered control.
+
 ## Rules
 
 ```bash

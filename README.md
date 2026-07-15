@@ -97,6 +97,19 @@ An existing output path is replaced only when it is empty or contains an intact 
 
 **Open detection content.** Rules are constrained YAML over normalized objects. They cannot execute custom JavaScript.
 
+## Git Guard
+
+AgentCSP can install an opt-in pre-commit and pre-push guard for any developer or coding assistant that uses Git:
+
+```bash
+agentcsp guard install
+agentcsp guard status
+```
+
+The guard inspects only staged or outgoing Git diffs. It blocks likely PATs, cloud access keys, provider keys, private-key headers, credentialed URLs, high-confidence secret assignments, and accidental non-template `.env` files. It reports a secret class, file path, and SHA-256 fingerprint only: matched values are never printed or written to an artifact.
+
+Existing regular repository hooks are preserved and chained. AgentCSP refuses to alter a shared or globally inherited `core.hooksPath`; central hook management should install the guard through its own controlled workflow. Git hooks can still be bypassed with `--no-verify`, and they cannot intercept direct uploads that do not use Git. Pair the local guard with protected branches, CI, and provider-side push protection.
+
 ## Scan Profiles
 
 | Profile | Intended use | Repository-controlled inputs | Default finding behavior |
@@ -163,6 +176,9 @@ agentcsp rules explain <id>   inspect one rule
 agentcsp baseline create      create a versioned findings baseline
 agentcsp baseline diff        compare current findings to a baseline
 agentcsp baseline migrate     migrate a supported baseline
+agentcsp guard install        install redacted pre-commit and pre-push secret guards
+agentcsp guard status         inspect managed Git guard status
+agentcsp guard uninstall      remove managed Git guards and restore preserved hooks
 agentcsp doctor               verify runtime and packaged assets
 agentcsp version --json       print compatibility metadata
 ```
