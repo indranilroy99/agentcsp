@@ -8,7 +8,7 @@ Review date: 2026-07-15
 
 Review mode: `SELECTIVE_EXPANSION`
 
-Current launch verdict: **v0.2 public-preview release candidate, advisory use only**. The implementation now has a trusted strict profile, bounded and deterministic scanning, ownership-aware artifact transactions, classified failures, lifecycle commands, release provenance controls, package verification, and a 159-test regression suite. It is suitable for production evaluation as an advisory repository scanner. It is not yet approved as an enforcement-grade blocking control because independent real-repository detection calibration and completed cross-platform release evidence remain open.
+Current launch verdict: **v0.2 advisory public preview approved for source distribution**. The implementation now has a trusted strict profile, bounded and deterministic scanning, ownership-aware artifact transactions, classified failures, lifecycle commands, release provenance controls, package verification, and a 159-test regression suite. It is suitable for production evaluation as an advisory repository scanner. It is not approved as an enforcement-grade blocking control because independent real-repository detection calibration remains open.
 
 ### v0.2 Evidence Update
 
@@ -23,13 +23,13 @@ Evidence recorded on 2026-07-15:
 - Protected-profile tests prove that explicit policy and baseline inputs are rejected unless they carry a matching SHA-256 digest, resolve outside the scan root, and are regular files.
 - CycloneDX 1.6 SBOM generation is deterministic and the release workflow produces checksums and GitHub attestations from immutable action pins.
 
-Remaining enforcement-grade blockers are deliberately narrow: an independently labeled real-repository corpus for any enforcement-eligible rule, successful registry provenance, and external security-user evaluation. The advisory public preview additionally requires a successful Linux/macOS/Windows package-install matrix on the pushed commit. Until enforcement evidence exists, all findings and policies remain recommendations rather than claims of runtime blocking.
+Remaining enforcement-grade blockers are deliberately narrow: an independently labeled real-repository corpus for any enforcement-eligible rule, successful registry provenance, and external security-user evaluation. The advisory source-preview matrix completed successfully on [GitHub Actions run 29438023209](https://github.com/indranilroy99/agentcsp/actions/runs/29438023209): Verify, SARIF publication, Linux/Node 22, Windows/Node 22, and macOS/Node 24 all passed. Until enforcement evidence exists, all findings and policies remain recommendations rather than claims of runtime blocking.
 
 ### Launch Review Closure
 
 The Autoplan CEO, engineering, and developer-experience review record is complete. A post-fix independent CEO and security-product re-review found no P0 or P1 blocker for pushing the advisory, source-built public-preview candidate. It verified that package smoke execution uses `pnpm.cmd` and the Node runtime on Windows, and that trusted policy and baseline inputs reject non-regular files before they are read. The review also independently reran the focused trust/CLI tests, full 159-test suite, lint, and scale envelope.
 
-This is an AI-assisted engineering review, not a substitute for an external professional security assessment. The pushed commit must still pass the hosted Verify, Linux/Node 22, Windows/Node 22, and macOS/Node 24 jobs before the preview is announced. npm publication, GitHub release tagging, and enforcement-grade claims remain out of scope until their documented prerequisites are satisfied.
+This is an AI-assisted engineering review, not a substitute for an external professional security assessment. The hosted Verify, Linux/Node 22, Windows/Node 22, and macOS/Node 24 jobs passed for the source-preview candidate. npm publication, GitHub release tagging, and enforcement-grade claims remain out of scope until their documented prerequisites are satisfied.
 
 ### Locked Premises
 
@@ -1044,7 +1044,7 @@ An **enforcement-eligible release** additionally requires the recommended pack t
 
 ### Gate Status
 
-CEO verdict: v0.2 remains a public-preview advisory release candidate until the final product-security review is green and the pushed commit completes the hosted Linux/macOS/Windows matrix. Automatic blocking remains unapproved until independent calibration exists. Engineering verdict: the implementation and local release gates satisfy the advisory CLI contract, subject to that hosted run. DX verdict: source and clean-package workflows are documented and tested; public-registry time-to-first-result is an enforcement-eligible release requirement and cannot be claimed before publication. Design review is not applicable because v0.2 has no UI scope. No user challenge or taste decision remains unresolved; all scope choices follow the explicit CLI-first, AI-security-only direction.
+CEO verdict: v0.2 is approved for its advisory source preview after independent product-security review and a green hosted Linux/macOS/Windows matrix. Automatic blocking remains unapproved until independent calibration exists. Engineering verdict: the implementation and local and hosted release gates satisfy the advisory CLI contract. DX verdict: source and clean-package workflows are documented and tested; public-registry time-to-first-result is an enforcement-eligible release requirement and cannot be claimed before publication. Design review is not applicable because v0.2 has no UI scope. No user challenge or taste decision remains unresolved; all scope choices follow the explicit CLI-first, AI-security-only direction.
 
 ## Quality Bar
 
