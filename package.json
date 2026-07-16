@@ -52,7 +52,7 @@
     "esbuild": "^0.28.1",
     "jiti": "^2.7.0",
     "typescript": "^7.0.2",
-    "vite": "^8.0.16",
+    "vite": "^8.1.5",
     "vitest": "^4.1.8",
     "yaml": "^2.9.0",
     "zod-to-json-schema": "^3.24.5"
