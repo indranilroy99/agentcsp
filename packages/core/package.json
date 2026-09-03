@@ -54,7 +54,7 @@
     "minimatch": "^10.0.1",
     "smol-toml": "^1.7.0",
     "yaml": "^2.8.0",
-    "zod": "^4.4.3"
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "rimraf": "^6.0.1"
